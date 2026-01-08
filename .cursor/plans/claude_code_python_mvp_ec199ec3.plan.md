@@ -218,6 +218,11 @@ py38-claude-code/
 - 创建项目结构
 - 设置 Python 3.8.10 严格兼容的依赖（requirements.txt + requirements-frozen.txt）
 - 基础 CLI 框架（click 7.1.2）
+- **终端美化与交互库集成**
+- 安装 `rich==12.6.0`（Markdown、代码高亮、面板、进度条）
+- 安装 `prompt_toolkit==3.0.39`（交互式输入、历史记录、自动补全）
+- 安装 `questionary==1.10.0`（选择菜单、确认提示）
+- 安装 `colorama==0.4.6`（Windows 7 ANSI 颜色支持）
 - Windows 7 路径处理测试
 - 编码处理（UTF-8 强制）
 
@@ -262,10 +267,13 @@ py38-claude-code/
 
 5. **命令执行（`!`）**
 
-- Shell 命令执行（Windows 7 使用 `cmd.exe`，Unix 使用 `bash`）
+- Shell 命令执行（Windows 7 使用 PowerShell，Unix 使用 `bash`）
+- Windows 7 默认 PowerShell 2.0，功能有限但足够使用
+- 使用 `powershell.exe -Command` 执行命令
+- 支持 PowerShell 脚本和 cmdlet
 - 输出捕获（使用 `subprocess`，正确处理编码）
 - 输出作为上下文传递
-- Windows 7 特定命令处理（路径转换、编码处理）
+- Windows 7 特定命令处理（路径转换、编码处理、PowerShell 语法）
 
 6. **基础 Agent 循环**
 
@@ -273,9 +281,14 @@ py38-claude-code/
 - 消息历史
 - 工具调用处理
 - **终端输出美化**（使用 rich/colorama）
-- 使用 `rich` 显示对话、代码块、表格
+- 使用 `rich` 显示对话、代码块、表格、Markdown
 - 使用 `colorama` 确保 Windows 7 颜色支持
-- 进度条、状态提示等
+- 进度条、状态提示、面板显示
+- **交互式输入**（使用 prompt_toolkit/questionary）
+- 使用 `prompt_toolkit` 替代 `input()`（历史记录、自动补全）
+- 使用 `questionary` 做安全确认和选择菜单
+- 多行输入支持（Shift+Enter）
+- 输入验证和错误提示
 
 ### Phase 3: 上下文体系（Week 3-4）
 
@@ -393,14 +406,54 @@ py38-claude-code/
 - **方案 B（备选）**：`requests == 2.28.2`（手动实现 OpenAI 格式请求）
     - 更底层控制，但代码量更多
     - 如果 `openai` 库在 Windows 7 上有问题，使用此方案
-- **终端格式化**：
+- **终端格式化与交互**：
 - **`colorama == 0.4.6`**（必需，Windows 7 ANSI 颜色支持）
     - Windows 7 上 ANSI 转义序列需要 colorama 才能正常显示
     - 轻量级，兼容性好
-- **`rich == 12.6.0`**（推荐，功能强大的终端格式化）
-    - 支持表格、进度条、语法高亮、Markdown 渲染等
+- **`rich == 12.6.0`**（必需，Python 界最好看的终端库）
+    - **Markdown 渲染**：在 Win7 上完美显示 Markdown（代码高亮、表格、列表等）
+    - **代码高亮**：支持多种语言的语法高亮（Python, JSON, YAML 等）
+    - **面板（Panel）**：美观的信息面板显示
+    - **进度条**：实时进度显示，支持多任务进度
+    - **表格**：美观的表格展示（对齐、边框、颜色）
     - 12.6.0 是最后支持 Python 3.8 的版本（13.0+ 需要 Python 3.9+）
-    - 如果只需要基本颜色，可以只用 colorama
+    - **Windows 7 完美支持**：无需额外配置即可使用
+- **`prompt_toolkit == 3.0.39`**（必需，交互之王）
+    - Python 自带的 `input()` 在 Win7 上很难用（不能按上箭头找历史记录，不能补全）
+    - **历史记录**：支持上下箭头浏览历史输入
+    - **自动补全**：支持 Tab 键自动补全（文件路径、命令等）
+    - **多行输入**：支持 Shift+Enter 多行输入
+    - **语法高亮**：输入时实时语法高亮
+    - **鼠标支持**：支持鼠标点击和选择
+    - 3.0.39 是最后支持 Python 3.8 的版本（4.0+ 需要 Python 3.9+）
+    - **Windows 7 完美支持**：让输入框像 IDE 一样强大
+- **`questionary == 1.10.0`**（必需，选择菜单）
+    - 替代 `input()` 做安全确认（例如：是否允许执行命令？[Y/n]）
+    - **交互式菜单**：漂亮的单选、多选菜单
+    - **确认提示**：自动处理 y/yes/n/no 等变体
+    - **输入验证**：内置验证器（必填、格式、范围等）
+    - **密码输入**：安全的密码输入（隐藏输入）
+    - **文件选择**：交互式文件/目录选择器
+    - 1.10.0 兼容 Python 3.8，后续版本需要 Python 3.9+
+    - **Windows 7 完美支持**：提供漂亮的交互式菜单
+- **`prompt_toolkit == 3.0.39`**（必需，交互之王）
+    - Python 自带的 `input()` 在 Win7 上很难用（不能按上箭头找历史记录，不能补全）
+    - **历史记录**：支持上下箭头浏览历史输入
+    - **自动补全**：支持 Tab 键自动补全（文件路径、命令等）
+    - **多行输入**：支持 Shift+Enter 多行输入
+    - **语法高亮**：输入时实时语法高亮
+    - **鼠标支持**：支持鼠标点击和选择
+    - 3.0.39 是最后支持 Python 3.8 的版本（4.0+ 需要 Python 3.9+）
+    - **Windows 7 完美支持**：让输入框像 IDE 一样强大
+- **`questionary == 1.10.0`**（必需，选择菜单）
+    - 替代 `input()` 做安全确认（例如：是否允许执行命令？[Y/n]）
+    - **交互式菜单**：漂亮的单选、多选菜单
+    - **确认提示**：自动处理 y/yes/n/no 等变体
+    - **输入验证**：内置验证器（必填、格式、范围等）
+    - **密码输入**：安全的密码输入（隐藏输入）
+    - **文件选择**：交互式文件/目录选择器
+    - 1.10.0 兼容 Python 3.8，后续版本需要 Python 3.9+
+    - **Windows 7 完美支持**：提供漂亮的交互式菜单
 - **配置解析**：`pyyaml == 5.4.1`（最后支持 Python 3.8.10 的版本）
 - **Git 集成**：`GitPython == 3.1.40`（兼容 Python 3.8.10 和 Windows 7）
 - **文件监控**：`watchdog == 2.1.9`（可选，Windows 7 兼容的最后版本）
@@ -432,9 +485,14 @@ py38-claude-code/
 - 避免硬编码路径分隔符（`/` 或 `\`）
 - 用户目录：使用 `os.path.expanduser("~")` 或 `pathlib.Path.home()`
 - **命令执行**：
-- Windows 7 使用 `cmd.exe` 而非 PowerShell（PowerShell 2.0 功能有限）
+- Windows 7 使用 PowerShell（默认 PowerShell 2.0）
+- 使用 `powershell.exe -Command "命令"` 执行
+- PowerShell 2.0 功能有限但足够基本命令执行
+- 支持 PowerShell cmdlet 和脚本语法
+- 注意：某些高级 PowerShell 功能在 2.0 中不可用
 - 使用 `subprocess` 模块而非 `os.system()`
 - 环境变量：使用 `os.environ` 而非 `os.getenv()`（更可靠）
+- 编码处理：PowerShell 输出使用 UTF-8 编码
 - **文件系统**：
 - Windows 7 路径长度限制：260 字符（MAX_PATH）
 - 长路径需要 `\\?\` 前缀（Python 3.8.10 的 `pathlib` 自动处理）
@@ -997,16 +1055,26 @@ class CommandExecutor:
     def __init__(self, work_dir: Path):
         self.work_dir = work_dir
         self.is_windows = sys.platform == 'win32'
-        self.shell = True if self.is_windows else False
-        self.encoding = 'utf-8'  # 强制 UTF-8，避免 Windows 7 GBK 问题
+        # Windows 7 使用 PowerShell，Unix 使用 bash
+        if self.is_windows:
+            self.shell_cmd = ['powershell.exe', '-Command']
+        else:
+            self.shell_cmd = ['/bin/bash', '-c']
+        self.encoding = 'utf-8'  # 强制 UTF-8，PowerShell 输出使用 UTF-8
     
     def execute(self, command: str, require_approval: bool = True) -> Tuple[str, int]:
         # 检查权限规则
         # 如果需要审批，等待用户确认
-        # Windows 7 使用 cmd.exe，Unix 使用 /bin/bash
+        # Windows 7 使用 PowerShell（powershell.exe -Command），Unix 使用 /bin/bash
         # 使用 subprocess 而非 os.system（更安全）
+        # PowerShell 命令格式：powershell.exe -Command "命令"
+        # 注意：Windows 7 默认 PowerShell 2.0，某些高级功能不可用
+        #   - 不支持 PowerShell 3.0+ 的某些 cmdlet（如 Get-Content -Raw）
+        #   - 不支持某些高级语法特性
+        #   - 但基本命令执行、文件操作、管道等完全支持
         # 捕获输出并正确处理编码（UTF-8）
         # 返回 (stdout, return_code)
+        # 示例：subprocess.run(['powershell.exe', '-Command', command], ...)
 ```
 
 
@@ -1034,7 +1102,7 @@ def load_settings(project_root: Path) -> Dict[str, Any]:
 ## 六、MVP 验收标准
 
 1. ✅ 能够通过 `@file` 和 `@dir` 注入上下文（Windows 7 路径处理正确）
-2. ✅ 能够通过 `!command` 执行 Shell 命令（Windows 7 使用 cmd.exe，输出编码正确）
+2. ✅ 能够通过 `!command` 执行 Shell 命令（Windows 7 使用 PowerShell，输出编码正确）
 3. ✅ 能够自动加载 `CLAUDE.md` 等长期记忆（跨平台路径处理）
 4. ✅ 支持自定义 Slash Commands（`/review`, `/commit` 等）
 5. ✅ 支持基础 Hooks（PostToolUse 自动格式化等）
@@ -1062,7 +1130,7 @@ def load_settings(project_root: Path) -> Dict[str, Any]:
 
 - **在线安装**（如果有内网 PyPI 镜像）：
   ```bash
-        pip install -r requirements.txt -i <内网镜像地址>
+              pip install -r requirements.txt -i <内网镜像地址>
   ```
 
 
@@ -1070,11 +1138,11 @@ def load_settings(project_root: Path) -> Dict[str, Any]:
 
 - **离线安装**（推荐，内网环境）：
   ```bash
-        # 在有网络的环境下载 wheel 文件
-        pip download -r requirements.txt -d wheels/
-        
-        # 在内网环境安装
-        pip install --no-index --find-links wheels/ -r requirements.txt
+              # 在有网络的环境下载 wheel 文件
+              pip download -r requirements.txt -d wheels/
+              
+              # 在内网环境安装
+              pip install --no-index --find-links wheels/ -r requirements.txt
   ```
 
 
@@ -1084,10 +1152,10 @@ def load_settings(project_root: Path) -> Dict[str, Any]:
 
 - **所有文件操作**：
   ```python
-        from pathlib import Path
-        file_path = Path("some/file.txt")
-        content = file_path.read_text(encoding='utf-8')  # 显式 UTF-8
-        file_path.write_text(content, encoding='utf-8')
+              from pathlib import Path
+              file_path = Path("some/file.txt")
+              content = file_path.read_text(encoding='utf-8')  # 显式 UTF-8
+              file_path.write_text(content, encoding='utf-8')
   ```
 
 
@@ -1095,15 +1163,15 @@ def load_settings(project_root: Path) -> Dict[str, Any]:
 
 - **命令执行**：
   ```python
-        import subprocess
-        result = subprocess.run(
-            command,
-            shell=True,  # Windows 7 需要
-            cwd=work_dir,
-            capture_output=True,
-            text=True,  # 自动处理编码
-            encoding='utf-8'  # 显式指定
-        )
+              import subprocess
+              result = subprocess.run(
+                  command,
+                  shell=True,  # Windows 7 需要
+                  cwd=work_dir,
+                  capture_output=True,
+                  text=True,  # 自动处理编码
+                  encoding='utf-8'  # 显式指定
+              )
   ```
 
 
@@ -1111,9 +1179,9 @@ def load_settings(project_root: Path) -> Dict[str, Any]:
 
 - **环境变量**：
   ```python
-        import os
-        api_key = os.environ.get('DEEPSEEK_API_KEY', '')
-        base_url = os.environ.get('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+              import os
+              api_key = os.environ.get('DEEPSEEK_API_KEY', '')
+              base_url = os.environ.get('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
   ```
 
 
@@ -1131,9 +1199,11 @@ click==7.1.2
 openai==0.28.1  # 最后支持 Python 3.8 的版本（1.0+ 需要 Python 3.9+）
 # requests==2.28.2  # 备选：如果 openai 库有问题，使用手动实现
 
-# 终端格式化（必需）
+# 终端格式化与交互（必需）
 colorama==0.4.6  # Windows 7 ANSI 颜色支持（必需）
-rich==12.6.0  # 推荐：强大的终端格式化（最后支持 Python 3.8 的版本）
+rich==12.6.0  # Python 界最好看的终端库（Markdown、代码高亮、面板、进度条）
+prompt_toolkit==3.0.39  # 交互之王（历史记录、自动补全、多行输入）
+questionary==1.10.0  # 选择菜单（交互式菜单、确认提示、输入验证）
 
 # 配置与数据
 pyyaml==5.4.1
@@ -1159,6 +1229,8 @@ black==22.12.0  # 代码格式化（如果支持 Python 3.8.10）
 - 所有版本都经过 Python 3.8.10 兼容性验证
 - `openai==0.28.1` 是最后支持 Python 3.8 的版本（1.0+ 需要 Python 3.9+）
 - `rich==12.6.0` 是最后支持 Python 3.8 的版本（13.0+ 需要 Python 3.9+）
+- `prompt_toolkit==3.0.39` 是最后支持 Python 3.8 的版本（4.0+ 需要 Python 3.9+）
+- `questionary==1.10.0` 兼容 Python 3.8，后续版本需要 Python 3.9+
 - `colorama` 在 Windows 7 上是必需的（否则颜色无法显示）
 - `urllib3` 版本需 < 2.0.0（2.0+ 需要 Python 3.9+）
 
@@ -1174,8 +1246,9 @@ black==22.12.0  # 代码格式化（如果支持 Python 3.8.10）
 - Python 3.8.10 的 `asyncio` 功能完整
 - 但 Windows 7 上事件循环可能有限制
 - 优先使用同步 `requests`，必要时再考虑异步
-
-## 八、后续扩展方向
-
-- 完整 MCP 协议支持（Resources, Prompts）
-- 高级沙箱隔离（Windows 7 上可能受限，使用基础隔离）
+- **PowerShell 2.0 限制**：
+- Windows 7 默认 PowerShell 2.0，功能有限但足够基本使用
+- 不支持 PowerShell 3.0+ 的某些 cmdlet（如 `Get-Content -Raw`）
+- 不支持某些高级语法特性（如 `-PipelineVariable`）
+- 但基本命令执行、文件操作、管道、变量等完全支持
+- 建议：优先使用 PowerShell 2.0 兼容的命令和语法
