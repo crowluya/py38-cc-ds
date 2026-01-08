@@ -454,3 +454,201 @@ def test_context_manager_max_directory_files() -> None:
         # Should be limited
         assert len(dir_ctx.files) == 10
         assert dir_ctx.truncated is True
+
+
+# ===== T051: Long-term memory file auto-discovery tests =====
+
+
+def test_long_term_memory_create() -> None:
+    """验证创建 LongTermMemory"""
+    from claude_code.core.context import LongTermMemory
+
+    memory = LongTermMemory()
+    assert memory is not None
+
+
+def test_long_term_memory_load_claude_md() -> None:
+    """验证加载 CLAUDE.md"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        claude_md = Path(tmpdir, "CLAUDE.md")
+        claude_md.write_text("# Project Guide\n\nThis is the guide.", encoding="utf-8")
+
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        assert "CLAUDE.md" in memory.files
+        assert "Project Guide" in memory.files["CLAUDE.md"].content
+
+
+def test_long_term_memory_load_multiple_files() -> None:
+    """验证加载多个长期记忆文件"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "CLAUDE.md").write_text("# Claude MD", encoding="utf-8")
+        Path(tmpdir, "AGENTS.md").write_text("# Agents MD", encoding="utf-8")
+        Path(tmpdir, "constitution.md").write_text("# Constitution", encoding="utf-8")
+
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        assert len(memory.files) == 3
+        assert "CLAUDE.md" in memory.files
+        assert "AGENTS.md" in memory.files
+        assert "constitution.md" in memory.files
+
+
+def test_long_term_memory_missing_files() -> None:
+    """验证处理缺失的长期记忆文件"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        # Only CLAUDE.md exists
+        Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
+
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        # Should not crash
+        assert len(memory.files) == 1
+        assert "CLAUDE.md" in memory.files
+
+
+def test_long_term_memory_empty_directory() -> None:
+    """验证空目录处理"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        # Should not crash, just empty
+        assert len(memory.files) == 0
+        assert memory.is_empty is True
+
+
+def test_long_term_memory_get_formatted_content() -> None:
+    """验证获取格式化的长期记忆内容"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "CLAUDE.md").write_text("# Project\n\nContent here", encoding="utf-8")
+
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        formatted = memory.get_formatted_content()
+
+        assert "CLAUDE.md" in formatted
+        assert "Project" in formatted
+        assert "Content here" in formatted
+
+
+def test_long_term_memory_get_file_names() -> None:
+    """验证获取已加载的文件名列表"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
+        Path(tmpdir, "AGENTS.md").write_text("# Agents", encoding="utf-8")
+
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        names = memory.get_file_names()
+
+        assert "CLAUDE.md" in names
+        assert "AGENTS.md" in names
+
+
+def test_long_term_memory_has_file() -> None:
+    """验证检查文件是否已加载"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
+
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        assert memory.has_file("CLAUDE.md") is True
+        assert memory.has_file("AGENTS.md") is False
+
+
+def test_long_term_memory_get_file() -> None:
+    """验证获取特定文件内容"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
+
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        file_ctx = memory.get_file("CLAUDE.md")
+
+        assert file_ctx is not None
+        assert "Guide" in file_ctx.content
+
+
+def test_long_term_memory_get_missing_file() -> None:
+    """验证获取不存在的文件"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        file_ctx = memory.get_file("MISSING.md")
+
+        assert file_ctx is None
+
+
+def test_long_term_memory_to_dict() -> None:
+    """验证转换为字典"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
+
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        data = memory.to_dict()
+
+        assert "files" in data
+        assert "CLAUDE.md" in data["files"]
+
+
+def test_long_term_memory_load_custom_files() -> None:
+    """验证加载自定义长期记忆文件"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "README.md").write_text("# Readme", encoding="utf-8")
+        Path(tmpdir, "CONTRIBUTING.md").write_text("# Contributing", encoding="utf-8")
+
+        memory = LongTermMemory(custom_files=["README.md", "CONTRIBUTING.md"])
+        memory.load_from_directory(tmpdir)
+
+        assert len(memory.files) == 2
+        assert "README.md" in memory.files
+        assert "CONTRIBUTING.md" in memory.files
+
+
+def test_long_term_memory_status_message() -> None:
+    """验证状态消息"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
+
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir)
+
+        status = memory.get_status_message()
+
+        assert "CLAUDE.md" in status
+        assert "loaded" in status.lower()

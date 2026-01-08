@@ -12,7 +12,7 @@ Formats file content and directory trees for LLM context:
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from claude_code.interaction.directory_loader import DirectoryLoader, DirectoryEntry
 
@@ -509,3 +509,143 @@ class ContextManager:
             return self.load_directory(reference.path, reference.recursive)
         else:
             raise ValueError(f"Unknown reference type: {type(reference)}")
+
+
+# ===== T051: LongTermMemory =====
+
+
+class LongTermMemory:
+    """
+    Long-term memory for persistent project context.
+
+    Auto-discovers and loads long-term memory files like:
+    - CLAUDE.md (project operations manual)
+    - AGENTS.md (cross-agent standards)
+    - constitution.md (engineering principles)
+
+    Handles missing files gracefully without crashing.
+    """
+
+    DEFAULT_MEMORY_FILES = [
+        "CLAUDE.md",
+        "AGENTS.md",
+        "constitution.md",
+    ]
+
+    def __init__(self, custom_files: Optional[List[str]] = None) -> None:
+        """
+        Initialize LongTermMemory.
+
+        Args:
+            custom_files: Optional list of custom memory file names to load
+        """
+        self._memory_files = custom_files or list(self.DEFAULT_MEMORY_FILES)
+        self._context_manager = ContextManager()
+        self.files: Dict[str, FileContext] = {}
+
+    def load_from_directory(self, directory: str) -> None:
+        """
+        Load memory files from a directory.
+
+        Args:
+            directory: Directory path to scan for memory files
+        """
+        dir_path = Path(directory)
+
+        for filename in self._memory_files:
+            file_path = dir_path / filename
+            if file_path.exists() and file_path.is_file():
+                try:
+                    file_ctx = self._context_manager.load_file(str(file_path))
+                    self.files[filename] = file_ctx
+                except (LoadError, OSError):
+                    # Skip files that can't be loaded
+                    pass
+
+    @property
+    def is_empty(self) -> bool:
+        """Check if no memory files are loaded."""
+        return len(self.files) == 0
+
+    def get_file_names(self) -> List[str]:
+        """
+        Get list of loaded file names.
+
+        Returns:
+            List of file names that were successfully loaded
+        """
+        return list(self.files.keys())
+
+    def has_file(self, filename: str) -> bool:
+        """
+        Check if a specific file is loaded.
+
+        Args:
+            filename: Name of the file to check
+
+        Returns:
+            True if file is loaded
+        """
+        return filename in self.files
+
+    def get_file(self, filename: str) -> Optional[FileContext]:
+        """
+        Get a specific loaded file.
+
+        Args:
+            filename: Name of the file to get
+
+        Returns:
+            FileContext if found, None otherwise
+        """
+        return self.files.get(filename)
+
+    def get_formatted_content(self) -> str:
+        """
+        Get all loaded memory files formatted as a single string.
+
+        Returns:
+            Formatted content from all loaded files
+        """
+        if not self.files:
+            return "# No long-term memory files loaded"
+
+        parts = []
+        for filename in sorted(self.files.keys()):
+            file_ctx = self.files[filename]
+            parts.append(f"# {filename}")
+            parts.append(file_ctx.format())
+            parts.append("")  # Blank line between files
+
+        return "\n".join(parts)
+
+    def get_status_message(self) -> str:
+        """
+        Get a status message about loaded memory files.
+
+        Returns:
+            Human-readable status message
+        """
+        if not self.files:
+            return "No long-term memory files found."
+
+        loaded = ", ".join(sorted(self.files.keys()))
+        return f"Loaded {len(self.files)} long-term memory file(s): {loaded}"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert to dictionary representation.
+
+        Returns:
+            Dictionary with files data
+        """
+        return {
+            "files": {
+                name: ctx.to_dict() if hasattr(ctx, "to_dict") else {
+                    "path": ctx.path,
+                    "content": ctx.content,
+                }
+                for name, ctx in self.files.items()
+            },
+            "count": len(self.files),
+        }

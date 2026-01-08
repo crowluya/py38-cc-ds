@@ -24,6 +24,7 @@ from claude_code.core.context import (
     DirectoryContext,
     FileContext,
     LoadError,
+    LongTermMemory,
     format_directory_context,
     format_file_context,
 )
@@ -48,6 +49,7 @@ __all__ = [
     "DirectoryContext",
     "FileContext",
     "LoadError",
+    "LongTermMemory",
     "format_file_context",
     "format_directory_context",
     # Executor
