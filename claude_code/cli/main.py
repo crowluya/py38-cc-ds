@@ -47,8 +47,27 @@ def cli(ctx: click.Context) -> None:
     default=None,
     help="LLM model to use",
 )
+@click.option(
+    "--json",
+    "json_output",
+    is_flag=True,
+    help="Output response as JSON (for programmatic integration)",
+)
+@click.option(
+    "--json-stream",
+    "json_stream_output",
+    is_flag=True,
+    help="Output response as streaming JSON (newline-delimited)",
+)
 @click.pass_context
-def chat(ctx: click.Context, prompt: str, print_mode: bool, model: Optional[str]) -> None:
+def chat(
+    ctx: click.Context,
+    prompt: str,
+    print_mode: bool,
+    model: Optional[str],
+    json_output: bool,
+    json_stream_output: bool,
+) -> None:
     """
     Start interactive chat session.
 
@@ -58,9 +77,33 @@ def chat(ctx: click.Context, prompt: str, print_mode: bool, model: Optional[str]
     - Reads from PROMPT argument if provided
     - Falls back to stdin if PROMPT is empty
     - Prints response and exits
+
+    If --json is specified, outputs response as JSON (requires -p).
+    If --json-stream is specified, outputs streaming JSON (requires -p).
     """
+    # Validate JSON flag usage
+    if (json_output or json_stream_output) and not print_mode:
+        click.echo(
+            "Error: --json and --json-stream require -p/--print mode",
+            err=True,
+        )
+        raise click.Exit(1)
+
+    if json_output and json_stream_output:
+        click.echo(
+            "Error: Cannot specify both --json and --json-stream",
+            err=True,
+        )
+        raise click.Exit(1)
+
     if print_mode:
-        _handle_headless_mode(ctx, prompt, model)
+        _handle_headless_mode(
+            ctx,
+            prompt,
+            model,
+            json_output=json_output,
+            json_stream_output=json_stream_output,
+        )
     else:
         click.echo("Interactive chat mode (not yet implemented)")
 
@@ -79,19 +122,45 @@ def chat(ctx: click.Context, prompt: str, print_mode: bool, model: Optional[str]
     default="text",
     help="Output format",
 )
+@click.option(
+    "-m",
+    "--model",
+    default=None,
+    help="LLM model to use",
+)
 @click.pass_context
-def print_cmd(ctx: click.Context, prompt: str, output_format: str) -> None:
+def print_cmd(
+    ctx: click.Context,
+    prompt: str,
+    output_format: str,
+    model: Optional[str],
+) -> None:
     """
     Execute in headless mode (single prompt, output and exit).
 
     PROMPT: The prompt to execute
+
+    Output formats:
+    - text: Plain text output (default)
+    - json: Single JSON object with response
+    - stream-json: Streaming JSON (newline-delimited)
     """
     if not prompt:
         click.echo("Error: prompt required for print command", err=True)
         raise click.Abort()
 
-    click.echo(f"Headless execution: {prompt}")
-    click.echo(f"Output format: {output_format}")
+    # Map output format to JSON flags
+    json_output = output_format == "json"
+    json_stream_output = output_format == "stream-json"
+
+    # Delegate to headless mode handler
+    _handle_headless_mode(
+        ctx,
+        prompt,
+        model,
+        json_output=json_output,
+        json_stream_output=json_stream_output,
+    )
 
 
 # Alias for 'print' command (since 'print' is a Python keyword)
@@ -105,6 +174,8 @@ def _handle_headless_mode(
     ctx: click.Context,
     prompt: str,
     model: Optional[str],
+    json_output: bool = False,
+    json_stream_output: bool = False,
 ) -> None:
     """
     Handle headless mode execution.
@@ -113,6 +184,8 @@ def _handle_headless_mode(
         ctx: Click context
         prompt: Prompt from command line argument (may be empty)
         model: Optional model override
+        json_output: Output as JSON
+        json_stream_output: Output as streaming JSON
 
     Raises:
         click.Exit: On error or completion
@@ -168,7 +241,7 @@ def _handle_headless_mode(
             llm_client=llm_client,
             max_tokens=settings.llm.max_tokens,
             temperature=settings.llm.temperature,
-            stream=False,  # No streaming in headless mode
+            stream=json_stream_output,  # Enable streaming for --json-stream
         )
         agent = Agent(agent_config)
     except Exception as e:
@@ -177,11 +250,108 @@ def _handle_headless_mode(
 
     # Process prompt and print response
     try:
-        turn = agent.process(user_input)
-        click.echo(turn.content)
+        if json_stream_output:
+            _handle_json_stream_output(agent, user_input)
+        elif json_output:
+            _handle_json_output(agent, user_input)
+        else:
+            # Regular text output
+            turn = agent.process(user_input)
+            click.echo(turn.content)
     except Exception as e:
-        click.echo(f"Error processing prompt: {e}", err=True)
+        # Format error as JSON if in JSON mode
+        if json_output or json_stream_output:
+            error_json = _format_error_json(str(e))
+            click.echo(error_json)
+        else:
+            click.echo(f"Error processing prompt: {e}", err=True)
         raise click.Exit(1)
+
+
+# ===== T091: JSON Output Helpers =====
+
+
+def _handle_json_output(agent: Agent, user_input: str) -> None:
+    """
+    Handle non-streaming JSON output.
+
+    Args:
+        agent: Agent instance
+        user_input: User prompt
+    """
+    from claude_code.cli.output import format_json_output, format_tool_calls_for_json
+
+    turn = agent.process(user_input)
+
+    # Format tool calls for JSON
+    tool_calls_json = format_tool_calls_for_json(turn.tool_calls)
+
+    # Output as JSON
+    json_output = format_json_output(
+        content=turn.content,
+        finish_reason=turn.finish_reason,
+        tool_calls=tool_calls_json,
+    )
+    click.echo(json_output)
+
+
+def _handle_json_stream_output(agent: Agent, user_input: str) -> None:
+    """
+    Handle streaming JSON output.
+
+    Args:
+        agent: Agent instance (configured for streaming)
+        user_input: User prompt
+    """
+    from claude_code.cli.output import format_json_stream_chunk, format_tool_calls_for_json
+
+    # Add user message
+    agent._add_user_message(user_input)
+
+    # Get streaming response
+    messages = agent._format_messages_for_llm()
+
+    chunks = agent._config.llm_client.chat_completion_stream(
+        messages=messages,
+        max_tokens=agent._config.max_tokens,
+        temperature=agent._config.temperature,
+    )
+
+    # Stream each chunk as JSON
+    for chunk in chunks:
+        if hasattr(chunk, "content"):
+            json_chunk = format_json_stream_chunk(content=chunk.content, done=False)
+            click.echo(json_chunk)
+
+    # Send final chunk with done=True
+    final_chunk = format_json_stream_chunk(
+        done=True,
+        finish_reason="stop",
+        tool_calls=None,
+    )
+    click.echo(final_chunk)
+
+
+def _format_error_json(error_message: str) -> str:
+    """
+    Format error as JSON.
+
+    Args:
+        error_message: Error message
+
+    Returns:
+        JSON string with error field
+    """
+    import json
+
+    error_dict = {
+        "error": error_message,
+        "content": "",
+        "finish_reason": "error",
+        "tool_calls": None,
+        "timestamp": None,
+    }
+    return json.dumps(error_dict, ensure_ascii=False)
 
 
 def main(args: List[str] = None) -> int:
