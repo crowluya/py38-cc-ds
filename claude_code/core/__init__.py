@@ -6,12 +6,18 @@ execution, and agent operations.
 """
 
 from claude_code.core.agent import (
+    Agent,
+    AgentConfig,
     CommandOutputContext,
+    ConversationTurn,
     Message,
     MessageRole,
+    ToolCall,
     ToolResult,
+    ToolType,
     add_assistant_message,
     add_user_message,
+    create_agent,
     create_history,
     deserialize_history,
     inject_command_output,
@@ -34,12 +40,18 @@ from claude_code.core.executor import CommandExecutor, CommandResult, execute_co
 
 __all__ = [
     # Agent
+    "Agent",
+    "AgentConfig",
     "CommandOutputContext",
+    "ConversationTurn",
     "Message",
     "MessageRole",
+    "ToolCall",
     "ToolResult",
+    "ToolType",
     "add_assistant_message",
     "add_user_message",
+    "create_agent",
     "create_history",
     "deserialize_history",
     "inject_command_output",

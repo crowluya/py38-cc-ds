@@ -14,6 +14,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
+from claude_code.core.context import ContextManager, LoadError
+from claude_code.core.executor import CommandExecutor
+
 
 class MessageRole(Enum):
     """Message role in conversation."""
@@ -298,7 +301,6 @@ def add_assistant_message(
     )
     return new_history
 
-
 def serialize_history(history: List[Message]) -> List[Dict[str, Any]]:
     """
     Serialize history to list of dictionaries.
@@ -323,3 +325,420 @@ def deserialize_history(data: List[Dict[str, Any]]) -> List[Message]:
         List of Message objects
     """
     return [Message.from_dict(item) for item in data]
+
+
+# ===== T060-T061: Agent Engine =====
+
+
+class ToolType(Enum):
+    """Type of tool call."""
+
+    SHELL = "shell"
+    READ_FILE = "read_file"
+    READ_DIRECTORY = "read_directory"
+
+
+@dataclass
+class ToolCall:
+    """A tool call requested by the LLM."""
+
+    tool_type: ToolType
+    command: str
+    arguments: Dict[str, Any]
+    call_id: str = ""
+
+    def __str__(self) -> str:
+        """String representation."""
+        return f"{self.tool_type.value}:{self.command}"
+
+
+@dataclass
+class ConversationTurn:
+    """Result of a conversation turn."""
+
+    content: str
+    finish_reason: str
+    tool_calls: Optional[List[ToolCall]] = None
+    raw_response: Optional[Any] = None
+
+    @property
+    def has_tools(self) -> bool:
+        """Check if this turn has tool calls."""
+        return self.tool_calls is not None and len(self.tool_calls) > 0
+
+
+@dataclass
+class AgentConfig:
+    """Configuration for Agent."""
+
+    llm_client: Any
+    max_tokens: int = 4096
+    temperature: float = 0.7
+    system_prompt: Optional[str] = None
+    stream: bool = False
+
+
+class Agent:
+    """
+    Agent for managing conversation loops and tool orchestration.
+
+    Features:
+    - Message history management
+    - LLM integration
+    - Tool execution (shell, file read, directory read)
+    - Context injection
+    - Streaming support
+    """
+
+    def __init__(self, config: AgentConfig) -> None:
+        """
+        Initialize Agent.
+
+        Args:
+            config: Agent configuration
+        """
+        self._config = config
+        self._history: List[Message] = []
+        self._context_manager = ContextManager()
+        self._command_executor = CommandExecutor()
+
+    def process(self, user_input: str) -> ConversationTurn:
+        """
+        Process a user input through the conversation loop.
+
+        Args:
+            user_input: User message or command
+
+        Returns:
+            ConversationTurn with response
+        """
+        # Add user message to history
+        self._add_user_message(user_input)
+
+        # Call LLM
+        if self._config.stream:
+            turn = self._call_llm_stream()
+        else:
+            turn = self._call_llm()
+
+        # Handle tool calls
+        if turn.has_tools:
+            turn = self._handle_tool_calls(turn)
+
+        # Add assistant response to history
+        self._add_assistant_message(turn.content, turn.tool_calls)
+
+        return turn
+
+    def inject_context(self, context: str) -> None:
+        """
+        Inject context into the conversation.
+
+        Args:
+            context: Context string (e.g., @file.txt or directory content)
+        """
+        # Add as a system message or user message with context
+        self._add_system_message(context)
+
+    def reset(self) -> None:
+        """Reset conversation history."""
+        self._history = []
+
+    def get_history(self) -> List[Message]:
+        """Get conversation history."""
+        return list(self._history)
+
+    def _call_llm(self) -> ConversationTurn:
+        """
+        Call LLM without streaming.
+
+        Returns:
+            ConversationTurn with response
+        """
+        messages = self._format_messages_for_llm()
+
+        kwargs = {
+            "max_tokens": self._config.max_tokens,
+            "temperature": self._config.temperature,
+        }
+
+        response = self._config.llm_client.chat_completion(
+            messages=messages,
+            **kwargs
+        )
+
+        # Extract tool calls if present
+        tool_calls = None
+        if hasattr(response, "tool_calls") and response.tool_calls:
+            tool_calls = self._parse_tool_calls(response.tool_calls)
+
+        return ConversationTurn(
+            content=getattr(response, "content", ""),
+            finish_reason=getattr(response, "finish_reason", "stop"),
+            tool_calls=tool_calls,
+            raw_response=response,
+        )
+
+    def _call_llm_stream(self) -> ConversationTurn:
+        """
+        Call LLM with streaming.
+
+        Returns:
+            ConversationTurn with accumulated response
+        """
+        messages = self._format_messages_for_llm()
+
+        chunks = self._config.llm_client.chat_completion_stream(
+            messages=messages,
+            max_tokens=self._config.max_tokens,
+            temperature=self._config.temperature,
+        )
+
+        content_parts = []
+        for chunk in chunks:
+            if hasattr(chunk, "content"):
+                content_parts.append(chunk.content)
+
+        content = "".join(content_parts)
+
+        return ConversationTurn(
+            content=content,
+            finish_reason="stop",
+            tool_calls=None,  # Streaming doesn't support tools in MVP
+        )
+
+    def _handle_tool_calls(self, turn: ConversationTurn) -> ConversationTurn:
+        """
+        Execute tool calls and get follow-up response.
+
+        Args:
+            turn: Turn with tool calls
+
+        Returns:
+            Final ConversationTurn after tool execution
+        """
+        if not turn.has_tools:
+            return turn
+
+        tool_results = []
+
+        for tool_call in turn.tool_calls:
+            result = self._execute_tool(tool_call)
+            tool_results.append(result)
+
+        # Add tool results to history
+        for result in tool_results:
+            self._add_tool_message(result)
+
+        # Get follow-up response from LLM
+        return self._call_llm()
+
+    def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
+        """
+        Execute a single tool call.
+
+        Args:
+            tool_call: Tool call to execute
+
+        Returns:
+            ToolResult with execution result
+        """
+        try:
+            if tool_call.tool_type == ToolType.SHELL:
+                return self._execute_shell(tool_call)
+            elif tool_call.tool_type == ToolType.READ_FILE:
+                return self._execute_read_file(tool_call)
+            elif tool_call.tool_type == ToolType.READ_DIRECTORY:
+                return self._execute_read_directory(tool_call)
+            else:
+                return ToolResult(
+                    tool_id=tool_call.call_id,
+                    name=tool_call.tool_type.value,
+                    output=f"Unknown tool type: {tool_call.tool_type.value}",
+                    success=False,
+                )
+        except Exception as e:
+            return ToolResult(
+                tool_id=tool_call.call_id,
+                name=tool_call.tool_type.value,
+                output=f"Error: {str(e)}",
+                success=False,
+            )
+
+    def _execute_shell(self, tool_call: ToolCall) -> ToolResult:
+        """Execute shell command."""
+        result = self._command_executor.execute(tool_call.command)
+
+        return ToolResult(
+            tool_id=tool_call.call_id,
+            name=ToolType.SHELL.value,
+            output=result.combined_output(),
+            success=result.success,
+            error_output=result.stderr,
+        )
+
+    def _execute_read_file(self, tool_call: ToolCall) -> ToolResult:
+        """Execute file read."""
+        try:
+            file_ctx = self._context_manager.load_file(tool_call.command)
+            return ToolResult(
+                tool_id=tool_call.call_id,
+                name=ToolType.READ_FILE.value,
+                output=file_ctx.content,
+                success=True,
+            )
+        except LoadError as e:
+            return ToolResult(
+                tool_id=tool_call.call_id,
+                name=ToolType.READ_FILE.value,
+                output=f"Failed to load file: {e.reason}",
+                success=False,
+            )
+
+    def _execute_read_directory(self, tool_call: ToolCall) -> ToolResult:
+        """Execute directory read."""
+        recursive = tool_call.arguments.get("recursive", True)
+
+        try:
+            dir_ctx = self._context_manager.load_directory(
+                tool_call.command,
+                recursive=recursive
+            )
+
+            # Format directory contents
+            output = dir_ctx.format()
+
+            return ToolResult(
+                tool_id=tool_call.call_id,
+                name=ToolType.READ_DIRECTORY.value,
+                output=output,
+                success=True,
+            )
+        except LoadError as e:
+            return ToolResult(
+                tool_id=tool_call.call_id,
+                name=ToolType.READ_DIRECTORY.value,
+                output=f"Failed to load directory: {e.reason}",
+                success=False,
+            )
+
+    def _parse_tool_calls(self, raw_tools: Any) -> List[ToolCall]:
+        """
+        Parse tool calls from LLM response.
+
+        Args:
+            raw_tools: Raw tool calls from LLM
+
+        Returns:
+            List of ToolCall objects
+        """
+        # Handle different formats from different LLMs
+        if isinstance(raw_tools, list):
+            # Check if already ToolCall objects
+            if raw_tools and all(isinstance(t, ToolCall) for t in raw_tools):
+                return raw_tools
+            return [self._parse_single_tool(t) for t in raw_tools]
+        elif isinstance(raw_tools, dict):
+            return [self._parse_single_tool(raw_tools)]
+        elif isinstance(raw_tools, ToolCall):
+            return [raw_tools]
+        return []
+
+    def _parse_single_tool(self, raw: Any) -> ToolCall:
+        """Parse a single tool call from raw format."""
+        # Extract common fields
+        tool_type_str = getattr(raw, "type", raw.get("type", "shell")) if isinstance(raw, dict) else getattr(raw, "type", "shell")
+
+        # Map to ToolType
+        try:
+            tool_type = ToolType(tool_type_str.lower())
+        except ValueError:
+            tool_type = ToolType.SHELL
+
+        command = getattr(raw, "command", raw.get("command", "")) if isinstance(raw, dict) else getattr(raw, "command", "")
+        arguments = getattr(raw, "arguments", raw.get("arguments", {})) if isinstance(raw, dict) else getattr(raw, "arguments", {})
+        call_id = getattr(raw, "id", raw.get("id", "")) if isinstance(raw, dict) else getattr(raw, "id", "")
+
+        return ToolCall(
+            tool_type=tool_type,
+            command=command,
+            arguments=arguments if isinstance(arguments, dict) else {},
+            call_id=call_id,
+        )
+
+    def _format_messages_for_llm(self) -> List[Dict[str, Any]]:
+        """
+        Format message history for LLM.
+
+        Returns:
+            List of message dictionaries
+        """
+        messages = []
+
+        # Add system prompt if configured
+        if self._config.system_prompt:
+            messages.append({
+                "role": "system",
+                "content": self._config.system_prompt,
+            })
+
+        # Add conversation history
+        for msg in self._history:
+            messages.append(msg.format_for_llm())
+
+        return messages
+
+    def _add_user_message(self, content: str) -> None:
+        """Add user message to history."""
+        self._history.append(Message(role=MessageRole.USER, content=content))
+
+    def _add_assistant_message(
+        self,
+        content: str,
+        tool_result: Optional[ToolResult] = None,
+    ) -> None:
+        """Add assistant message to history."""
+        self._history.append(
+            Message(role=MessageRole.ASSISTANT, content=content, tool_result=tool_result)
+        )
+
+    def _add_system_message(self, content: str) -> None:
+        """Add system message to history."""
+        self._history.append(Message(role=MessageRole.SYSTEM, content=content))
+
+    def _add_tool_message(self, tool_result: ToolResult) -> None:
+        """Add tool result message to history."""
+        self._history.append(
+            Message(
+                role=MessageRole.TOOL,
+                content="",
+                tool_result=tool_result,
+            )
+        )
+
+
+def create_agent(
+    llm_client: Any,
+    system_prompt: Optional[str] = None,
+    max_tokens: int = 4096,
+    temperature: float = 0.7,
+) -> Agent:
+    """
+    Convenience function to create an Agent.
+
+    Args:
+        llm_client: LLM client instance
+        system_prompt: Optional system prompt
+        max_tokens: Maximum tokens for generation
+        temperature: Sampling temperature
+
+    Returns:
+        Configured Agent instance
+    """
+    config = AgentConfig(
+        llm_client=llm_client,
+        system_prompt=system_prompt,
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    return Agent(config)
