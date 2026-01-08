@@ -18,6 +18,7 @@ from claude_code.core.agent import (
     serialize_history,
 )
 from claude_code.core.context import (
+    CircularImportError,
     ContextBuilder,
     ContextFormatter,
     ContextManager,
@@ -25,6 +26,7 @@ from claude_code.core.context import (
     FileContext,
     LoadError,
     LongTermMemory,
+    ModularLoader,
     format_directory_context,
     format_file_context,
 )
@@ -43,6 +45,7 @@ __all__ = [
     "inject_command_output",
     "serialize_history",
     # Context
+    "CircularImportError",
     "ContextBuilder",
     "ContextFormatter",
     "ContextManager",
@@ -50,6 +53,7 @@ __all__ = [
     "FileContext",
     "LoadError",
     "LongTermMemory",
+    "ModularLoader",
     "format_file_context",
     "format_directory_context",
     # Executor

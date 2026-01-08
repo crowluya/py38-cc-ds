@@ -652,3 +652,194 @@ def test_long_term_memory_status_message() -> None:
 
         assert "CLAUDE.md" in status
         assert "loaded" in status.lower()
+
+
+# ===== T052: Modular imports with @ syntax =====
+
+
+def test_modular_loader_create() -> None:
+    """验证创建 ModularLoader"""
+    from claude_code.core.context import ModularLoader
+
+    loader = ModularLoader()
+    assert loader is not None
+
+
+def test_modular_loader_load_with_imports() -> None:
+    """验证加载带 @ 导入的文件"""
+    from claude_code.core.context import ModularLoader
+
+    with TemporaryDirectory() as tmpdir:
+        # Create referenced file
+        referenced = Path(tmpdir, "referenced.md")
+        referenced.write_text("# Referenced\n\nContent from referenced file", encoding="utf-8")
+
+        # Create main file with @ import
+        main_file = Path(tmpdir, "main.md")
+        main_file.write_text("# Main\n\n@referenced.md\n\nMain content", encoding="utf-8")
+
+        loader = ModularLoader()
+        content = loader.load_with_imports(str(main_file), base_dir=tmpdir)
+
+        assert "Referenced" in content
+        assert "Content from referenced file" in content
+        assert "Main content" in content
+
+
+def test_modular_loader_load_with_line_range_import() -> None:
+    """验证加载带行号范围的 @ 导入"""
+    from claude_code.core.context import ModularLoader
+
+    with TemporaryDirectory() as tmpdir:
+        # Create referenced file
+        referenced = Path(tmpdir, "other.md")
+        referenced.write_text("Line 1\nLine 2\nLine 3\nLine 4\nLine 5", encoding="utf-8")
+
+        # Create main file with @ import with line range
+        main_file = Path(tmpdir, "main.md")
+        main_file.write_text("# Main\n\n@other.md:2-4\n\nMain content", encoding="utf-8")
+
+        loader = ModularLoader()
+        content = loader.load_with_imports(str(main_file), base_dir=tmpdir)
+
+        # Should only include lines 2-4
+        assert "Line 2" in content
+        assert "Line 3" in content
+        assert "Line 4" in content
+        assert "Line 1" not in content
+        assert "Line 5" not in content
+
+
+def test_modular_loader_multi_level_imports() -> None:
+    """验证多层导入"""
+    from claude_code.core.context import ModularLoader
+
+    with TemporaryDirectory() as tmpdir:
+        # Level 3: base file
+        Path(tmpdir, "base.md").write_text("# Base\n\nBase content", encoding="utf-8")
+
+        # Level 2: middle file importing base
+        Path(tmpdir, "middle.md").write_text("# Middle\n\n@base.md\n\nMiddle content", encoding="utf-8")
+
+        # Level 1: top file importing middle
+        Path(tmpdir, "top.md").write_text("# Top\n\n@middle.md\n\nTop content", encoding="utf-8")
+
+        loader = ModularLoader()
+        content = loader.load_with_imports(str(tmpdir) + "/top.md", base_dir=tmpdir)
+
+        assert "Base content" in content
+        assert "Middle content" in content
+        assert "Top content" in content
+
+
+def test_modular_loader_circular_detection() -> None:
+    """验证循环引用检测"""
+    from claude_code.core.context import ModularLoader, CircularImportError
+
+    with TemporaryDirectory() as tmpdir:
+        # File A imports B, B imports A
+        Path(tmpdir, "a.md").write_text("# A\n\n@b.md\n\nContent A", encoding="utf-8")
+        Path(tmpdir, "b.md").write_text("# B\n\n@a.md\n\nContent B", encoding="utf-8")
+
+        loader = ModularLoader()
+
+        with pytest.raises(CircularImportError) as exc_info:
+            loader.load_with_imports(str(tmpdir) + "/a.md", base_dir=tmpdir)
+
+        # Error should mention the circular path
+        error_msg = str(exc_info.value)
+        assert "circular" in error_msg.lower() or "cycle" in error_msg.lower()
+
+
+def test_modular_loader_missing_import() -> None:
+    """验证处理缺失的导入文件"""
+    from claude_code.core.context import ModularLoader
+
+    with TemporaryDirectory() as tmpdir:
+        # Main file imports non-existent file
+        Path(tmpdir, "main.md").write_text("# Main\n\n@missing.md\n\nMain content", encoding="utf-8")
+
+        loader = ModularLoader()
+        content = loader.load_with_imports(str(tmpdir) + "/main.md", base_dir=tmpdir)
+
+        # Should continue without the missing file
+        assert "Main content" in content
+        # Should have a warning about missing file
+        assert "missing" in content.lower() or "not found" in content.lower()
+
+
+def test_modular_loader_directory_import() -> None:
+    """验证目录导入"""
+    from claude_code.core.context import ModularLoader
+
+    with TemporaryDirectory() as tmpdir:
+        # Create a subdirectory
+        subdir = Path(tmpdir, "docs")
+        subdir.mkdir()
+        Path(subdir, "file1.md").write_text("# File 1", encoding="utf-8")
+        Path(subdir, "file2.md").write_text("# File 2", encoding="utf-8")
+
+        # Main file imports directory
+        Path(tmpdir, "main.md").write_text("# Main\n\n@docs/\n\nMain content", encoding="utf-8")
+
+        loader = ModularLoader()
+        content = loader.load_with_imports(str(tmpdir) + "/main.md", base_dir=tmpdir)
+
+        # Should include both files
+        assert "File 1" in content or "file1" in content
+        assert "File 2" in content or "file2" in content
+
+
+def test_modular_loader_max_import_depth() -> None:
+    """验证最大导入深度限制"""
+    from claude_code.core.context import ModularLoader
+
+    with TemporaryDirectory() as tmpdir:
+        # Create chain of files
+        for i in range(20):
+            if i == 19:
+                content = f"# File {i}\n\nContent {i}"
+            else:
+                content = f"# File {i}\n\n@file{i+1}.md\n\nContent {i}"
+            Path(tmpdir, f"file{i}.md").write_text(content, encoding="utf-8")
+
+        loader = ModularLoader(max_import_depth=10)
+        content = loader.load_with_imports(str(tmpdir) + "/file0.md", base_dir=tmpdir)
+
+        # Should stop at max depth
+        # Should have some content
+        assert len(content) > 0
+
+
+def test_modular_loader_import_tracker() -> None:
+    """验证导入追踪"""
+    from claude_code.core.context import ModularLoader
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "base.md").write_text("# Base", encoding="utf-8")
+        Path(tmpdir, "main.md").write_text("# Main\n\n@base.md", encoding="utf-8")
+
+        loader = ModularLoader()
+        loader.load_with_imports(str(tmpdir) + "/main.md", base_dir=tmpdir)
+
+        # Should track imported files
+        assert len(loader.get_imported_files()) > 0
+
+
+def test_long_term_memory_load_with_modular_imports() -> None:
+    """验证 LongTermMemory 加载时处理模块化导入"""
+    from claude_code.core.context import LongTermMemory
+
+    with TemporaryDirectory() as tmpdir:
+        # Create referenced file
+        Path(tmpdir, "shared.md").write_text("# Shared\n\nShared content", encoding="utf-8")
+
+        # CLAUDE.md imports shared.md
+        Path(tmpdir, "CLAUDE.md").write_text("# Claude Guide\n\n@shared.md\n\nMain guide", encoding="utf-8")
+
+        memory = LongTermMemory()
+        memory.load_from_directory(tmpdir, resolve_imports=True)
+
+        # Content should include imported file
+        claude_content = memory.get_file("CLAUDE.md").content
+        assert "Shared content" in claude_content

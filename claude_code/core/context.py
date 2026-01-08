@@ -10,6 +10,7 @@ Formats file content and directory trees for LLM context:
 - Content truncation for large files/directories
 """
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -649,3 +650,341 @@ class LongTermMemory:
             },
             "count": len(self.files),
         }
+
+    def load_from_directory(
+        self,
+        directory: str,
+        resolve_imports: bool = False,
+    ) -> None:
+        """
+        Load memory files from a directory.
+
+        Args:
+            directory: Directory path to scan for memory files
+            resolve_imports: Whether to resolve @ import syntax
+        """
+        dir_path = Path(directory)
+
+        for filename in self._memory_files:
+            file_path = dir_path / filename
+            if file_path.exists() and file_path.is_file():
+                try:
+                    if resolve_imports:
+                        # Use ModularLoader to resolve imports
+                        loader = ModularLoader()
+                        content = loader.load_with_imports(str(file_path), base_dir=directory)
+                        # Create FileContext with resolved content
+                        self.files[filename] = FileContext(
+                            path=str(file_path),
+                            content=content,
+                            line_range=None,
+                            truncated=False,
+                        )
+                    else:
+                        file_ctx = self._context_manager.load_file(str(file_path))
+                        self.files[filename] = file_ctx
+                except (LoadError, OSError):
+                    # Skip files that can't be loaded
+                    pass
+
+
+# ===== T052: Modular imports with @ syntax =====
+
+
+class CircularImportError(Exception):
+    """Error raised when circular imports are detected."""
+
+    def __init__(self, import_path: List[str]) -> None:
+        """
+        Initialize CircularImportError.
+
+        Args:
+            import_path: List of file paths showing the circular import chain
+        """
+        self.import_path = import_path
+        path_str = " -> ".join(import_path)
+        super().__init__(f"Circular import detected: {path_str}")
+
+
+class ModularLoader:
+    """
+    Loader for files with modular @ import syntax.
+
+    Supports:
+    - @file.md - Import entire file
+    - @file.md:1-10 - Import file with line range
+    - @dir/ - Import all files in directory
+    - Recursive imports with circular reference detection
+    """
+
+    DEFAULT_MAX_IMPORT_DEPTH = 50
+    IMPORT_PATTERN = re.compile(r"@([^\s\n]+)")
+
+    def __init__(self, max_import_depth: int = DEFAULT_MAX_IMPORT_DEPTH) -> None:
+        """
+        Initialize ModularLoader.
+
+        Args:
+            max_import_depth: Maximum depth for recursive imports
+        """
+        self._max_import_depth = max_import_depth
+        self._imported_files: List[str] = []
+
+    def load_with_imports(
+        self,
+        file_path: str,
+        base_dir: Optional[str] = None,
+        current_depth: int = 0,
+        import_chain: Optional[List[str]] = None,
+    ) -> str:
+        """
+        Load a file and resolve @ import statements.
+
+        Args:
+            file_path: Path to the file to load
+            base_dir: Base directory for resolving relative imports
+            current_depth: Current import depth (for recursion)
+            import_chain: Chain of imported files (for circular detection)
+
+        Returns:
+            File content with @ imports resolved
+
+        Raises:
+            CircularImportError: If circular imports are detected
+            LoadError: If file cannot be loaded
+        """
+        if import_chain is None:
+            import_chain = []
+
+        # Resolve the file path for comparison
+        try:
+            resolved_path = str(Path(file_path).resolve())
+        except OSError:
+            resolved_path = file_path
+
+        base = base_dir or str(Path(file_path).parent)
+
+        # Check for circular imports (before reading file)
+        if resolved_path in import_chain:
+            # Circular import detected
+            full_chain = import_chain + [resolved_path]
+            raise CircularImportError(full_chain)
+
+        # Check max depth
+        if current_depth >= self._max_import_depth:
+            return f"\n\n[Import depth limit reached]\n\n"
+
+        # Track imported file
+        if resolved_path not in self._imported_files:
+            self._imported_files.append(resolved_path)
+
+        # Read file content
+        try:
+            content = Path(file_path).read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return f"\n\n[File not found: {file_path}]\n\n"
+        except UnicodeDecodeError:
+            try:
+                content = Path(file_path).read_text(encoding="latin-1")
+            except Exception:
+                return f"\n\n[Cannot read file: {file_path}]\n\n"
+
+        # Process @ imports
+        new_chain = import_chain + [resolved_path]
+        result = self._process_imports(content, base, current_depth + 1, new_chain)
+
+        return result
+
+    def _process_imports(
+        self,
+        content: str,
+        base_dir: str,
+        current_depth: int,
+        import_chain: List[str],
+    ) -> str:
+        """
+        Process @ import statements in content.
+
+        Args:
+            content: File content
+            base_dir: Base directory for resolving imports
+            current_depth: Current import depth
+            import_chain: Chain of imported files
+
+        Returns:
+            Content with @ imports resolved
+        """
+        lines = []
+        base_path = Path(base_dir)
+
+        for line in content.split("\n"):
+            # Check for @ import
+            match = self.IMPORT_PATTERN.search(line)
+            if match:
+                import_ref = match.group(1)
+
+                # Parse the import reference
+                imported_content = self._resolve_import(
+                    import_ref,
+                    base_path,
+                    current_depth,
+                    import_chain,
+                )
+
+                # Replace the @import line with the imported content
+                if imported_content:
+                    lines.append(imported_content)
+            else:
+                lines.append(line)
+
+        return "\n".join(lines)
+
+    def _resolve_import(
+        self,
+        import_ref: str,
+        base_path: Path,
+        current_depth: int,
+        import_chain: List[str],
+    ) -> str:
+        """
+        Resolve a single @ import reference.
+
+        Args:
+            import_ref: Import reference (e.g., "file.md", "file.md:1-10", "dir/")
+            base_path: Base directory for resolving paths
+            current_depth: Current import depth
+            import_chain: Chain of imported files
+
+        Returns:
+            Resolved import content
+        """
+        # Check if it's a directory import (ends with /)
+        if import_ref.endswith("/"):
+            return self._import_directory(import_ref, base_path, current_depth, import_chain)
+
+        # Check if it has a line range
+        range_match = re.search(r":(\d+)-(\d+)", import_ref)
+        line_range = None
+        if range_match:
+            line_range = (int(range_match.group(1)), int(range_match.group(2)))
+            import_ref = import_ref[:range_match.start()]
+
+        # Resolve the import path
+        import_path = base_path / import_ref
+
+        if not import_path.exists():
+            return f"\n\n[Import not found: {import_ref}]\n\n"
+
+        if import_path.is_dir():
+            return self._import_directory(
+                import_ref + "/",
+                base_path,
+                current_depth,
+                import_chain,
+            )
+
+        # Import the file
+        return self._import_file(
+            str(import_path),
+            base_path,
+            current_depth,
+            import_chain,
+            line_range,
+        )
+
+    def _import_file(
+        self,
+        file_path: str,
+        base_path: Path,
+        current_depth: int,
+        import_chain: List[str],
+        line_range: Optional[Tuple[int, int]] = None,
+    ) -> str:
+        """
+        Import a file with optional line range.
+
+        Args:
+            file_path: Path to file
+            base_path: Base directory
+            current_depth: Current import depth
+            import_chain: Chain of imported files
+            line_range: Optional line range
+
+        Returns:
+            File content (with line range applied if specified)
+        """
+        # Load file with recursive import processing
+        content = self.load_with_imports(
+            file_path,
+            base_dir=str(base_path),
+            current_depth=current_depth,
+            import_chain=import_chain,
+        )
+
+        # Apply line range if specified (after imports are resolved)
+        if line_range:
+            lines = content.split("\n")
+            start, end = line_range
+            start_idx = max(0, start - 1)
+            end_idx = min(len(lines), end)
+            content = "\n".join(lines[start_idx:end_idx])
+
+        return content
+
+    def _import_directory(
+        self,
+        dir_ref: str,
+        base_path: Path,
+        current_depth: int,
+        import_chain: List[str],
+    ) -> str:
+        """
+        Import all files in a directory.
+
+        Args:
+            dir_ref: Directory reference (e.g., "docs/")
+            base_path: Base directory
+            current_depth: Current import depth
+            import_chain: Chain of imported files
+
+        Returns:
+            Combined content from all files in directory
+        """
+        dir_path = base_path / dir_ref.rstrip("/")
+
+        if not dir_path.exists() or not dir_path.is_dir():
+            return f"\n\n[Directory not found: {dir_ref}]\n\n"
+
+        # Use DirectoryLoader to list files
+        loader = DirectoryLoader()
+        try:
+            entries = loader.list_directory(str(dir_path), recursive=True)
+        except OSError:
+            return f"\n\n[Cannot read directory: {dir_ref}]\n\n"
+
+        # Sort and combine file contents
+        parts = []
+        for entry in sorted(entries, key=lambda e: e.path):
+            if entry.is_file:
+                file_content = self._import_file(
+                    entry.path,
+                    dir_path,
+                    current_depth,
+                    import_chain,
+                )
+                parts.append(file_content)
+
+        return "\n\n".join(parts)
+
+    def get_imported_files(self) -> List[str]:
+        """
+        Get list of files that were imported.
+
+        Returns:
+            List of file paths
+        """
+        return list(self._imported_files)
+
+    def reset(self) -> None:
+        """Reset the imported files tracker."""
+        self._imported_files = []
