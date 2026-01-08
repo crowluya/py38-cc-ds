@@ -278,3 +278,179 @@ def test_context_builder() -> None:
         assert "content2" in full_context
         assert "file1.txt" in full_context
         assert "file2.txt" in full_context
+
+
+# ===== T050: ContextManager tests =====
+
+
+def test_context_manager_create() -> None:
+    """验证创建 ContextManager"""
+    from claude_code.core.context import ContextManager
+
+    manager = ContextManager()
+    assert manager is not None
+
+
+def test_context_manager_load_file() -> None:
+    """验证加载文件"""
+    from claude_code.core.context import ContextManager
+
+    with TemporaryDirectory() as tmpdir:
+        test_file = Path(tmpdir, "test.txt")
+        test_file.write_text("Hello, world!", encoding="utf-8")
+
+        manager = ContextManager()
+        file_ctx = manager.load_file(str(test_file))
+
+        assert "test.txt" in file_ctx.path
+        assert file_ctx.content == "Hello, world!"
+
+
+def test_context_manager_load_file_with_line_range() -> None:
+    """验证加载文件带行号范围"""
+    from claude_code.core.context import ContextManager
+
+    with TemporaryDirectory() as tmpdir:
+        test_file = Path(tmpdir, "test.txt")
+        test_file.write_text("Line 1\nLine 2\nLine 3\nLine 4\nLine 5", encoding="utf-8")
+
+        manager = ContextManager()
+        file_ctx = manager.load_file(str(test_file), line_range=(2, 4))
+
+        assert file_ctx.line_range == (2, 4)
+        assert "Line 1" not in file_ctx.content
+        assert "Line 2" in file_ctx.content
+        assert "Line 4" in file_ctx.content
+        assert "Line 5" not in file_ctx.content
+
+
+def test_context_manager_load_file_not_found() -> None:
+    """验证加载不存在的文件"""
+    from claude_code.core.context import ContextManager, LoadError
+
+    manager = ContextManager()
+
+    with pytest.raises(LoadError):
+        manager.load_file("/nonexistent/file.txt")
+
+
+def test_context_manager_load_file_encoding_error() -> None:
+    """验证文件编码错误处理"""
+    from claude_code.core.context import ContextManager
+
+    with TemporaryDirectory() as tmpdir:
+        test_file = Path(tmpdir, "test.bin")
+        # Write binary data that's not valid UTF-8
+        test_file.write_bytes(b"\xff\xfe\x00\x01")
+
+        manager = ContextManager()
+        # Should handle encoding error gracefully
+        file_ctx = manager.load_file(str(test_file))
+
+        # Should have content (fallback encoding)
+        assert file_ctx.content is not None
+
+
+def test_context_manager_load_directory() -> None:
+    """验证加载目录"""
+    from claude_code.core.context import ContextManager
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "file1.txt").write_text("content1")
+        Path(tmpdir, "file2.py").write_text("content2")
+
+        manager = ContextManager()
+        dir_ctx = manager.load_directory(tmpdir)
+
+        assert len(dir_ctx.files) == 2
+
+
+def test_context_manager_load_directory_recursive() -> None:
+    """验证递归加载目录"""
+    from claude_code.core.context import ContextManager
+
+    with TemporaryDirectory() as tmpdir:
+        subdir = Path(tmpdir, "subdir")
+        subdir.mkdir()
+        Path(tmpdir, "root.txt").write_text("root")
+        Path(subdir, "nested.txt").write_text("nested")
+
+        manager = ContextManager()
+        dir_ctx = manager.load_directory(tmpdir, recursive=True)
+
+        assert len(dir_ctx.files) == 2
+
+
+def test_context_manager_load_directory_not_found() -> None:
+    """验证加载不存在的目录"""
+    from claude_code.core.context import ContextManager, LoadError
+
+    manager = ContextManager()
+
+    with pytest.raises(LoadError):
+        manager.load_directory("/nonexistent/directory")
+
+
+def test_context_manager_load_file_from_reference() -> None:
+    """验证从 FileReference 加载文件"""
+    from claude_code.core.context import ContextManager
+    from claude_code.interaction.parser import FileReference
+
+    with TemporaryDirectory() as tmpdir:
+        test_file = Path(tmpdir, "test.txt")
+        test_file.write_text("content", encoding="utf-8")
+
+        ref = FileReference(path=str(test_file), line_range=None)
+        manager = ContextManager()
+        file_ctx = manager.load_from_reference(ref)
+
+        assert "content" in file_ctx.content
+
+
+def test_context_manager_load_directory_from_reference() -> None:
+    """验证从 DirectoryReference 加载目录"""
+    from claude_code.core.context import ContextManager
+    from claude_code.interaction.parser import DirectoryReference
+
+    with TemporaryDirectory() as tmpdir:
+        Path(tmpdir, "file.txt").write_text("content")
+
+        ref = DirectoryReference(path=tmpdir, recursive=True)
+        manager = ContextManager()
+        dir_ctx = manager.load_from_reference(ref)
+
+        assert len(dir_ctx.files) == 1
+
+
+def test_context_manager_max_file_size() -> None:
+    """验证文件大小限制"""
+    from claude_code.core.context import ContextManager
+
+    with TemporaryDirectory() as tmpdir:
+        test_file = Path(tmpdir, "test.txt")
+        # Create large content
+        test_file.write_text("x" * 20000, encoding="utf-8")
+
+        manager = ContextManager(max_file_size=10000)
+        file_ctx = manager.load_file(str(test_file))
+
+        # Should be truncated
+        assert file_ctx.truncated is True
+        assert len(file_ctx.content) <= 10000
+
+
+def test_context_manager_max_directory_files() -> None:
+    """验证目录文件数量限制"""
+    from claude_code.core.context import ContextManager
+
+    with TemporaryDirectory() as tmpdir:
+        # Create many files
+        for i in range(50):
+            Path(tmpdir, f"file{i}.txt").write_text(f"content{i}")
+
+        manager = ContextManager(max_directory_files=10)
+        dir_ctx = manager.load_directory(tmpdir)
+
+        # Should be limited
+        assert len(dir_ctx.files) == 10
+        assert dir_ctx.truncated is True

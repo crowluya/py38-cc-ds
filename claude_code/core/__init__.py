@@ -20,8 +20,10 @@ from claude_code.core.agent import (
 from claude_code.core.context import (
     ContextBuilder,
     ContextFormatter,
+    ContextManager,
     DirectoryContext,
     FileContext,
+    LoadError,
     format_directory_context,
     format_file_context,
 )
@@ -42,8 +44,10 @@ __all__ = [
     # Context
     "ContextBuilder",
     "ContextFormatter",
+    "ContextManager",
     "DirectoryContext",
     "FileContext",
+    "LoadError",
     "format_file_context",
     "format_directory_context",
     # Executor

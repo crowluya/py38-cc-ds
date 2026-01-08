@@ -375,3 +375,137 @@ def format_directory_context(
     """
     formatter = ContextFormatter()
     return formatter.format_directory(path, recursive)
+
+
+# ===== T050: ContextManager =====
+
+
+class LoadError(Exception):
+    """Error raised when loading a file or directory fails."""
+
+    def __init__(self, path: str, reason: str) -> None:
+        """
+        Initialize LoadError.
+
+        Args:
+            path: Path that failed to load
+            reason: Reason for failure
+        """
+        self.path = path
+        self.reason = reason
+        super().__init__(f"Failed to load '{path}': {reason}")
+
+
+class ContextManager:
+    """
+    Manager for loading file and directory contexts.
+
+    Provides a high-level API for loading files and directories
+    with proper error handling and configuration.
+    """
+
+    DEFAULT_MAX_FILE_SIZE = 100000  # 100 KB
+    DEFAULT_MAX_DIRECTORY_FILES = 100
+
+    def __init__(
+        self,
+        max_file_size: int = DEFAULT_MAX_FILE_SIZE,
+        max_directory_files: int = DEFAULT_MAX_DIRECTORY_FILES,
+    ) -> None:
+        """
+        Initialize ContextManager.
+
+        Args:
+            max_file_size: Maximum file size in characters
+            max_directory_files: Maximum files to load from a directory
+        """
+        self._max_file_size = max_file_size
+        self._max_directory_files = max_directory_files
+        self._formatter = ContextFormatter(
+            max_content_length=max_file_size,
+            max_directory_files=max_directory_files,
+        )
+
+    def load_file(
+        self,
+        path: str,
+        line_range: Optional[Tuple[int, int]] = None,
+    ) -> FileContext:
+        """
+        Load a file as context.
+
+        Args:
+            path: File path
+            line_range: Optional line range (start, end)
+
+        Returns:
+            FileContext with file content
+
+        Raises:
+            LoadError: If file cannot be loaded
+        """
+        try:
+            return self._formatter.format_file(path, line_range)
+        except FileNotFoundError as e:
+            raise LoadError(path, "File not found") from e
+        except ValueError as e:
+            raise LoadError(path, str(e)) from e
+        except OSError as e:
+            raise LoadError(path, f"OS error: {e}") from e
+
+    def load_directory(
+        self,
+        path: str,
+        recursive: bool = True,
+        include_content: bool = True,
+    ) -> DirectoryContext:
+        """
+        Load a directory as context.
+
+        Args:
+            path: Directory path
+            recursive: Whether to scan recursively
+            include_content: Whether to include file contents
+
+        Returns:
+            DirectoryContext with directory contents
+
+        Raises:
+            LoadError: If directory cannot be loaded
+        """
+        try:
+            return self._formatter.format_directory(
+                path, recursive=recursive
+            )
+        except FileNotFoundError as e:
+            raise LoadError(path, "Directory not found") from e
+        except ValueError as e:
+            raise LoadError(path, str(e)) from e
+        except OSError as e:
+            raise LoadError(path, f"OS error: {e}") from e
+
+    def load_from_reference(
+        self,
+        reference: object,
+    ) -> object:
+        """
+        Load context from a parser reference.
+
+        Args:
+            reference: FileReference or DirectoryReference from parser
+
+        Returns:
+            FileContext or DirectoryContext
+
+        Raises:
+            LoadError: If reference cannot be loaded
+            ValueError: If reference type is unknown
+        """
+        from claude_code.interaction.parser import FileReference, DirectoryReference
+
+        if isinstance(reference, FileReference):
+            return self.load_file(reference.path, reference.line_range)
+        elif isinstance(reference, DirectoryReference):
+            return self.load_directory(reference.path, reference.recursive)
+        else:
+            raise ValueError(f"Unknown reference type: {type(reference)}")
