@@ -9,8 +9,18 @@ from claude_code.interaction.commands import (
     CommandFrontmatter,
     SlashCommand,
     SlashCommandManager,
-    create_default_manager,
+    create_default_manager as create_default_command_manager,
     execute_command_template,
+)
+
+from claude_code.interaction.hooks import (
+    HookContext,
+    HookEvent,
+    HookManager,
+    HookMatcher,
+    HookScript,
+    ScriptRunner,
+    create_default_manager,
 )
 
 __all__ = [
@@ -18,6 +28,13 @@ __all__ = [
     "CommandFrontmatter",
     "SlashCommand",
     "SlashCommandManager",
-    "create_default_manager",
+    "create_default_command_manager",
     "execute_command_template",
+    "HookContext",
+    "HookEvent",
+    "HookManager",
+    "HookMatcher",
+    "HookScript",
+    "ScriptRunner",
+    "create_default_manager",
 ]
