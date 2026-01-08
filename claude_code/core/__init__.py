@@ -2,7 +2,7 @@
 Core module for Claude Code
 
 Contains core functionality for context management,
-execution, and agent operations.
+execution, agent operations, and SDD (Spec-Driven Development).
 """
 
 from claude_code.core.agent import (
@@ -37,6 +37,21 @@ from claude_code.core.context import (
     format_file_context,
 )
 from claude_code.core.executor import CommandExecutor, CommandResult, execute_command
+from claude_code.core.sdd import (
+    CircularDependencyError,
+    ExecutorStatus,
+    Task,
+    TaskExecutionError,
+    TaskExecutor,
+    TaskExecutorConfig,
+    TaskResult,
+    TaskStatus,
+    analyze_dependencies,
+    execute_task,
+    group_parallel_tasks,
+    parse_tasks_from_markdown,
+    topological_sort,
+)
 
 __all__ = [
     # Agent
@@ -72,5 +87,19 @@ __all__ = [
     "CommandExecutor",
     "CommandResult",
     "execute_command",
+    # SDD
+    "Task",
+    "TaskStatus",
+    "TaskResult",
+    "TaskExecutor",
+    "TaskExecutorConfig",
+    "ExecutorStatus",
+    "TaskExecutionError",
+    "CircularDependencyError",
+    "parse_tasks_from_markdown",
+    "analyze_dependencies",
+    "topological_sort",
+    "group_parallel_tasks",
+    "execute_task",
 ]
 
