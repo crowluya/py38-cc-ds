@@ -225,3 +225,128 @@ def test_combined_output() -> None:
 
     combined = result.combined_output()
     assert "test" in combined
+
+
+# ===== T071: Permission Integration Tests =====
+
+
+def test_executor_with_permission_allow() -> None:
+    """验证权限允许时执行命令"""
+    from claude_code.security.permissions import (
+        PermissionManager,
+        PermissionRule,
+        PermissionAction,
+        PermissionDomain,
+    )
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.COMMAND,
+        action=PermissionAction.ALLOW,
+        pattern="echo *",
+    ))
+
+    executor = CommandExecutor(permission_manager=manager)
+
+    result = executor.execute("echo test")
+
+    assert result.return_code == 0
+    assert "test" in result.stdout
+
+
+def test_executor_with_permission_deny() -> None:
+    """验证权限拒绝时不执行命令"""
+    from claude_code.security.permissions import (
+        PermissionManager,
+        PermissionRule,
+        PermissionAction,
+        PermissionDomain,
+    )
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.COMMAND,
+        action=PermissionAction.DENY,
+        pattern="echo *",
+    ))
+
+    executor = CommandExecutor(permission_manager=manager)
+
+    result = executor.execute("echo test")
+
+    # Should return error result
+    assert result.return_code != 0
+    assert "permission" in result.stderr.lower() or "denied" in result.stderr.lower()
+
+
+def test_executor_with_permission_ask_granted() -> None:
+    """验证 ASK 权限通过时执行命令"""
+    from claude_code.security.permissions import (
+        PermissionManager,
+        PermissionRule,
+        PermissionAction,
+        PermissionDomain,
+    )
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.COMMAND,
+        action=PermissionAction.ASK,
+        pattern="echo *",
+    ))
+
+    # Callback that grants permission
+    def grant_callback(domain, target, reason):
+        return True
+
+    executor = CommandExecutor(
+        permission_manager=manager,
+        approval_callback=grant_callback,
+    )
+
+    result = executor.execute("echo test")
+
+    assert result.return_code == 0
+    assert "test" in result.stdout
+
+
+def test_executor_with_permission_ask_denied() -> None:
+    """验证 ASK 权限拒绝时不执行命令"""
+    from claude_code.security.permissions import (
+        PermissionManager,
+        PermissionRule,
+        PermissionAction,
+        PermissionDomain,
+    )
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.COMMAND,
+        action=PermissionAction.ASK,
+        pattern="echo *",
+    ))
+
+    # Callback that denies permission
+    def deny_callback(domain, target, reason):
+        return False
+
+    executor = CommandExecutor(
+        permission_manager=manager,
+        approval_callback=deny_callback,
+    )
+
+    result = executor.execute("echo test")
+
+    # Should return error result
+    assert result.return_code != 0
+    assert "permission" in result.stderr.lower() or "denied" in result.stderr.lower()
+
+
+def test_executor_without_permission_manager() -> None:
+    """验证没有权限管理器时正常执行"""
+    executor = CommandExecutor()
+
+    result = executor.execute("echo test")
+
+    assert result.return_code == 0
+    assert "test" in result.stdout

@@ -558,3 +558,402 @@ def test_permission_case_sensitive() -> None:
         target="file.txt",
     )
     # This tests current behavior - may vary based on glob implementation
+
+
+# ===== T071: Approval Workflow Tests =====
+
+
+def test_permission_approver_create() -> None:
+    """验证创建 PermissionApprover"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    approver = PermissionApprover(manager)
+
+    assert approver is not None
+    assert approver.manager == manager
+
+
+def test_permission_approver_allow_action() -> None:
+    """验证 ALLOW 动作直接通过"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.FILE_READ,
+        action=PermissionAction.ALLOW,
+        pattern="*.txt",
+    ))
+
+    approver = PermissionApprover(manager)
+
+    # ALLOW should be automatically granted
+    permission = approver.request_permission(
+        domain=PermissionDomain.FILE_READ,
+        target="test.txt",
+    )
+
+    assert permission.granted is True
+    assert permission.result is not None
+    assert permission.result.status == PermissionStatus.GRANTED
+
+
+def test_permission_approver_deny_action() -> None:
+    """验证 DENY 动作直接拒绝"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.FILE_WRITE,
+        action=PermissionAction.DENY,
+        pattern="*.txt",
+    ))
+
+    approver = PermissionApprover(manager)
+
+    # DENY should be automatically denied
+    permission = approver.request_permission(
+        domain=PermissionDomain.FILE_WRITE,
+        target="test.txt",
+    )
+
+    assert permission.granted is False
+    assert permission.result is not None
+    assert permission.result.status == PermissionStatus.DENIED
+
+
+def test_permission_approver_ask_action_without_callback() -> None:
+    """验证 ASK 动作无回调时拒绝"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.COMMAND,
+        action=PermissionAction.ASK,
+        pattern="rm *",
+    ))
+
+    approver = PermissionApprover(manager)
+
+    # ASK without callback should default to deny
+    permission = approver.request_permission(
+        domain=PermissionDomain.COMMAND,
+        target="rm -rf /tmp/test",
+    )
+
+    assert permission.granted is False
+    assert permission.result is not None
+    assert permission.result.status == PermissionStatus.DENIED
+
+
+def test_permission_approver_ask_action_with_grant_callback() -> None:
+    """验证 ASK 动作回调通过"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.COMMAND,
+        action=PermissionAction.ASK,
+        pattern="rm *",
+    ))
+
+    # Callback that grants permission
+    def grant_callback(domain, target, reason):
+        return True
+
+    approver = PermissionApprover(manager, approval_callback=grant_callback)
+
+    permission = approver.request_permission(
+        domain=PermissionDomain.COMMAND,
+        target="rm -rf /tmp/test",
+    )
+
+    assert permission.granted is True
+    assert permission.result is not None
+    assert permission.result.status == PermissionStatus.GRANTED
+
+
+def test_permission_approver_ask_action_with_deny_callback() -> None:
+    """验证 ASK 动作回调拒绝"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.FILE_WRITE,
+        action=PermissionAction.ASK,
+        pattern="*.py",
+    ))
+
+    # Callback that denies permission
+    def deny_callback(domain, target, reason):
+        return False
+
+    approver = PermissionApprover(manager, approval_callback=deny_callback)
+
+    permission = approver.request_permission(
+        domain=PermissionDomain.FILE_WRITE,
+        target="test.py",
+    )
+
+    assert permission.granted is False
+    assert permission.result is not None
+    assert permission.result.status == PermissionStatus.DENIED
+
+
+def test_permission_approver_callback_parameters() -> None:
+    """验证回调函数参数传递"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.COMMAND,
+        action=PermissionAction.ASK,
+        pattern="git *",
+        description="Version control",
+    ))
+
+    # Track callback parameters
+    callback_params = []
+
+    def track_callback(domain, target, reason):
+        callback_params.append((domain, target, reason))
+        return True
+
+    approver = PermissionApprover(manager, approval_callback=track_callback)
+
+    approver.request_permission(
+        domain=PermissionDomain.COMMAND,
+        target="git push",
+    )
+
+    assert len(callback_params) == 1
+    domain, target, reason = callback_params[0]
+    assert domain == PermissionDomain.COMMAND
+    assert target == "git push"
+    assert "Version control" in reason or reason is not None
+
+
+def test_permission_approver_audit_log() -> None:
+    """验证审批日志"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.FILE_READ,
+        action=PermissionAction.ALLOW,
+        pattern="*.txt",
+    ))
+
+    approver = PermissionApprover(manager)
+
+    # Request permission
+    permission = approver.request_permission(
+        domain=PermissionDomain.FILE_READ,
+        target="test.txt",
+    )
+
+    # Check audit log
+    assert len(approver.audit_log) > 0
+    last_audit = approver.audit_log[-1]
+
+    assert last_audit.domain == PermissionDomain.FILE_READ
+    assert last_audit.target == "test.txt"
+    assert last_audit.granted is True
+
+
+def test_permission_approver_audit_log_for_denied() -> None:
+    """验证拒绝操作的审计日志"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.FILE_WRITE,
+        action=PermissionAction.DENY,
+        pattern="*.txt",
+    ))
+
+    approver = PermissionApprover(manager)
+
+    permission = approver.request_permission(
+        domain=PermissionDomain.FILE_WRITE,
+        target="test.txt",
+    )
+
+    assert len(approver.audit_log) > 0
+    last_audit = approver.audit_log[-1]
+
+    assert last_audit.domain == PermissionDomain.FILE_WRITE
+    assert last_audit.target == "test.txt"
+    assert last_audit.granted is False
+
+
+def test_permission_approver_get_audit_history() -> None:
+    """验证获取审计历史"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.FILE_READ,
+        action=PermissionAction.ALLOW,
+        pattern="*",
+    ))
+
+    approver = PermissionApprover(manager)
+
+    # Make multiple requests
+    approver.request_permission(PermissionDomain.FILE_READ, "file1.txt")
+    approver.request_permission(PermissionDomain.FILE_READ, "file2.txt")
+    approver.request_permission(PermissionDomain.FILE_READ, "file3.txt")
+
+    history = approver.get_audit_history()
+
+    assert len(history) == 3
+    assert history[0]["target"] == "file1.txt"
+    assert history[1]["target"] == "file2.txt"
+    assert history[2]["target"] == "file3.txt"
+
+
+def test_permission_approver_clear_audit_log() -> None:
+    """验证清空审计日志"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.FILE_READ,
+        action=PermissionAction.ALLOW,
+        pattern="*",
+    ))
+
+    approver = PermissionApprover(manager)
+
+    approver.request_permission(PermissionDomain.FILE_READ, "test.txt")
+    assert len(approver.audit_log) > 0
+
+    approver.clear_audit_log()
+    assert len(approver.audit_log) == 0
+
+
+def test_permission_approver_check_and_execute_allowed() -> None:
+    """验证检查并执行允许的操作"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.FILE_READ,
+        action=PermissionAction.ALLOW,
+        pattern="*.txt",
+    ))
+
+    approver = PermissionApprover(manager)
+
+    executed = [False]
+
+    def read_file():
+        executed[0] = True
+        return "content"
+
+    # Should execute
+    result = approver.check_and_execute(
+        domain=PermissionDomain.FILE_READ,
+        target="test.txt",
+        action=read_file,
+    )
+
+    assert result is not None
+    assert executed[0] is True
+
+
+def test_permission_approver_check_and_execute_denied() -> None:
+    """验证检查并执行拒绝的操作"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.FILE_WRITE,
+        action=PermissionAction.DENY,
+        pattern="*.txt",
+    ))
+
+    approver = PermissionApprover(manager)
+
+    executed = [False]
+
+    def write_file():
+        executed[0] = True
+        return "written"
+
+    # Should not execute
+    result = approver.check_and_execute(
+        domain=PermissionDomain.FILE_WRITE,
+        target="test.txt",
+        action=write_file,
+    )
+
+    assert result is None
+    assert executed[0] is False
+
+
+def test_permission_approver_check_and_execute_ask_granted() -> None:
+    """验证 ASK 操作通过后执行"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.COMMAND,
+        action=PermissionAction.ASK,
+        pattern="rm *",
+    ))
+
+    def grant_callback(domain, target, reason):
+        return True
+
+    approver = PermissionApprover(manager, approval_callback=grant_callback)
+
+    executed = [False]
+
+    def dangerous_command():
+        executed[0] = True
+        return "deleted"
+
+    # Should execute after approval
+    result = approver.check_and_execute(
+        domain=PermissionDomain.COMMAND,
+        target="rm -rf /tmp/test",
+        action=dangerous_command,
+    )
+
+    assert result is not None
+    assert executed[0] is True
+
+
+def test_permission_approver_check_and_execute_ask_denied() -> None:
+    """验证 ASK 操作拒绝后不执行"""
+    from claude_code.security.permissions import PermissionApprover
+
+    manager = PermissionManager()
+    manager.add_rule(PermissionRule(
+        domain=PermissionDomain.COMMAND,
+        action=PermissionAction.ASK,
+        pattern="rm *",
+    ))
+
+    def deny_callback(domain, target, reason):
+        return False
+
+    approver = PermissionApprover(manager, approval_callback=deny_callback)
+
+    executed = [False]
+
+    def dangerous_command():
+        executed[0] = True
+        return "deleted"
+
+    # Should not execute after denial
+    result = approver.check_and_execute(
+        domain=PermissionDomain.COMMAND,
+        target="rm -rf /tmp/test",
+        action=dangerous_command,
+    )
+
+    assert result is None
+    assert executed[0] is False

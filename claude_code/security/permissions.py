@@ -13,9 +13,10 @@ Handles:
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from fnmatch import fnmatch
-from typing import List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 class PermissionAction(Enum):
@@ -426,3 +427,185 @@ def create_default_manager() -> PermissionManager:
     ))
 
     return manager
+
+
+# ===== T071: Approval Workflow =====
+
+
+@dataclass
+class AuditEntry:
+    """
+    A single audit log entry.
+
+    Tracks permission checks and their outcomes.
+    """
+
+    domain: PermissionDomain
+    target: str
+    granted: bool
+    action: PermissionAction
+    timestamp: str
+    reason: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert to dictionary representation.
+
+        Returns:
+            Dictionary with entry data
+        """
+        return {
+            "domain": self.domain,
+            "target": self.target,
+            "granted": self.granted,
+            "action": self.action,
+            "timestamp": self.timestamp,
+            "reason": self.reason,
+        }
+
+
+ApprovalCallback = Callable[[PermissionDomain, str, Optional[str]], bool]
+
+
+class PermissionApprover:
+    """
+    Permission approval workflow manager.
+
+    Handles permission checks with approval callbacks:
+    - ALLOW actions: Automatically granted
+    - DENY actions: Automatically denied
+    - ASK actions: Require approval via callback
+
+    Features:
+    - Approval callback for user interaction
+    - Audit logging for all permission checks
+    - check_and_execute helper for safe execution
+    """
+
+    def __init__(
+        self,
+        manager: PermissionManager,
+        approval_callback: Optional[ApprovalCallback] = None,
+    ) -> None:
+        """
+        Initialize PermissionApprover.
+
+        Args:
+            manager: PermissionManager to use for rule checking
+            approval_callback: Optional callback for ASK actions.
+                Receives (domain, target, reason) and returns bool.
+        """
+        self.manager = manager
+        self.approval_callback = approval_callback
+        self.audit_log: List[AuditEntry] = []
+
+    def request_permission(
+        self,
+        domain: PermissionDomain,
+        target: str,
+    ) -> Permission:
+        """
+        Request permission for an action.
+
+        For ALLOW: Automatically granted
+        For DENY: Automatically denied
+        For ASK: Calls approval_callback (or denies if no callback)
+
+        Args:
+            domain: Permission domain
+            target: Target path/command
+
+        Returns:
+            Permission with granted status
+        """
+        # Check permission rules
+        result = self.manager.check_permission(domain, target)
+        permission = Permission(
+            domain=domain,
+            target=target,
+            result=result,
+            granted=(result.status == PermissionStatus.GRANTED),
+        )
+
+        # Handle ASK actions
+        if result.status == PermissionStatus.PENDING:
+            if self.approval_callback is not None:
+                # Get reason from matching rule
+                reason = None
+                if result.matching_rule and result.matching_rule.description:
+                    reason = result.matching_rule.description
+
+                # Call approval callback
+                approved = self.approval_callback(domain, target, reason)
+
+                if approved:
+                    permission.grant()
+                else:
+                    permission.deny()
+            else:
+                # No callback, default to deny
+                permission.deny()
+
+        # Log to audit
+        self._audit_log(permission)
+
+        return permission
+
+    def check_and_execute(
+        self,
+        domain: PermissionDomain,
+        target: str,
+        action: Callable[[], Any],
+    ) -> Optional[Any]:
+        """
+        Check permission and execute action if granted.
+
+        This is a convenience method for the common pattern:
+        - Check permission
+        - If granted, execute action
+        - If denied, return None
+
+        Args:
+            domain: Permission domain
+            target: Target path/command
+            action: Function to execute if permission granted
+
+        Returns:
+            Result of action if granted, None otherwise
+        """
+        permission = self.request_permission(domain, target)
+
+        if permission.granted:
+            return action()
+
+        return None
+
+    def _audit_log(self, permission: Permission) -> None:
+        """
+        Add entry to audit log.
+
+        Args:
+            permission: Permission that was checked
+        """
+        entry = AuditEntry(
+            domain=permission.domain,
+            target=permission.target,
+            granted=permission.granted,
+            action=permission.result.action if permission.result else PermissionAction.DENY,
+            timestamp=datetime.now().isoformat(),
+            reason=permission.result.matching_rule.description if permission.result and permission.result.matching_rule else None,
+        )
+        self.audit_log.append(entry)
+
+    def get_audit_history(self) -> List[Dict[str, Any]]:
+        """
+        Get audit history as list of dictionaries.
+
+        Returns:
+            List of audit entry dictionaries
+        """
+        return [entry.to_dict() for entry in self.audit_log]
+
+    def clear_audit_log(self) -> None:
+        """Clear all audit log entries."""
+        self.audit_log = []

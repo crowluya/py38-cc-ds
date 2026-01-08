@@ -8,14 +8,26 @@ Formats file content and directory trees for LLM context:
 - File content with path identifier and line ranges
 - Directory tree structures
 - Content truncation for large files/directories
+- Permission checking for file operations (T071)
 """
 
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from claude_code.interaction.directory_loader import DirectoryLoader, DirectoryEntry
+
+# Optional type hints for permission system
+try:
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from claude_code.security.permissions import (
+            PermissionManager,
+            ApprovalCallback,
+        )
+except ImportError:
+    pass
 
 
 @dataclass
@@ -403,6 +415,8 @@ class ContextManager:
 
     Provides a high-level API for loading files and directories
     with proper error handling and configuration.
+
+    T071: Optional permission checking for file operations.
     """
 
     DEFAULT_MAX_FILE_SIZE = 100000  # 100 KB
@@ -412,6 +426,8 @@ class ContextManager:
         self,
         max_file_size: int = DEFAULT_MAX_FILE_SIZE,
         max_directory_files: int = DEFAULT_MAX_DIRECTORY_FILES,
+        permission_manager: Optional[Any] = None,
+        approval_callback: Optional[Callable] = None,
     ) -> None:
         """
         Initialize ContextManager.
@@ -419,9 +435,13 @@ class ContextManager:
         Args:
             max_file_size: Maximum file size in characters
             max_directory_files: Maximum files to load from a directory
+            permission_manager: Optional PermissionManager for checking file permissions
+            approval_callback: Optional callback for ASK permissions
         """
         self._max_file_size = max_file_size
         self._max_directory_files = max_directory_files
+        self._permission_manager = permission_manager
+        self._approval_callback = approval_callback
         self._formatter = ContextFormatter(
             max_content_length=max_file_size,
             max_directory_files=max_directory_files,
@@ -443,8 +463,13 @@ class ContextManager:
             FileContext with file content
 
         Raises:
-            LoadError: If file cannot be loaded
+            LoadError: If file cannot be loaded or permission denied
         """
+        # T071: Check read permission
+        if self._permission_manager is not None:
+            if not self._check_file_permission(path, for_read=True):
+                raise LoadError(path, "Permission denied: File read not permitted")
+
         try:
             return self._formatter.format_file(path, line_range)
         except FileNotFoundError as e:
@@ -474,6 +499,11 @@ class ContextManager:
         Raises:
             LoadError: If directory cannot be loaded
         """
+        # T071: Check read permission for directory
+        if self._permission_manager is not None:
+            if not self._check_file_permission(path, for_read=True):
+                raise LoadError(path, "Permission denied: Directory read not permitted")
+
         try:
             return self._formatter.format_directory(
                 path, recursive=recursive
@@ -484,6 +514,44 @@ class ContextManager:
             raise LoadError(path, str(e)) from e
         except OSError as e:
             raise LoadError(path, f"OS error: {e}") from e
+
+    def _check_file_permission(
+        self,
+        path: str,
+        for_read: bool = True,
+    ) -> bool:
+        """
+        Check if file operation is permitted.
+
+        Args:
+            path: File path to check
+            for_read: True for read operation, False for write
+
+        Returns:
+            True if permitted, False otherwise
+        """
+        # Lazy import to avoid circular dependency
+        from claude_code.security.permissions import (
+            PermissionApprover,
+            PermissionDomain,
+        )
+
+        # Determine domain based on operation
+        domain = PermissionDomain.FILE_READ if for_read else PermissionDomain.FILE_WRITE
+
+        # Create approver with callback if provided
+        approver = PermissionApprover(
+            self._permission_manager,
+            approval_callback=self._approval_callback,
+        )
+
+        # Check permission
+        permission = approver.request_permission(
+            domain=domain,
+            target=path,
+        )
+
+        return permission.granted
 
     def load_from_reference(
         self,

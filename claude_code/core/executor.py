@@ -11,6 +11,7 @@ Executes shell commands with:
 - Working directory support
 - Environment variable support
 - Timeout support
+- Permission checking (T071)
 """
 
 import os
@@ -18,7 +19,19 @@ import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+# Optional type hints for permission system
+try:
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from claude_code.security.permissions import (
+            PermissionManager,
+            PermissionDomain,
+            ApprovalCallback,
+        )
+except ImportError:
+    pass
 
 
 @dataclass
@@ -64,16 +77,27 @@ class CommandExecutor:
     - Windows 7: PowerShell (powershell.exe -Command)
     - Windows 10+: PowerShell Core (pwsh) or Windows PowerShell
     - Unix/Linux/macOS: bash (or sh as fallback)
+
+    T071: Optional permission checking for command execution.
     """
 
-    def __init__(self, default_timeout: int = 30) -> None:
+    def __init__(
+        self,
+        default_timeout: int = 30,
+        permission_manager: Optional[Any] = None,
+        approval_callback: Optional[Callable] = None,
+    ) -> None:
         """
         Initialize command executor.
 
         Args:
             default_timeout: Default timeout in seconds
+            permission_manager: Optional PermissionManager for checking command permissions
+            approval_callback: Optional callback for ASK permissions
         """
         self._default_timeout = default_timeout
+        self._permission_manager = permission_manager
+        self._approval_callback = approval_callback
 
     def execute(
         self,
@@ -101,6 +125,18 @@ class CommandExecutor:
 
         command = args[0]
         cmd_args = args[1:] if len(args) > 1 else []
+
+        # T071: Check permissions if permission manager is set
+        if self._permission_manager is not None:
+            if not self._check_command_permission(command, cmd_args):
+                # Permission denied
+                return CommandResult(
+                    command=command,
+                    return_code=1,
+                    stdout="",
+                    stderr="Permission denied: Command execution not permitted",
+                    timed_out=False,
+                )
 
         # Build the shell command
         shell_cmd, shell_args = self._build_shell_command(command, cmd_args)
@@ -164,6 +200,47 @@ class CommandExecutor:
                 stderr=str(e),
                 timed_out=False,
             )
+
+    def _check_command_permission(
+        self,
+        command: str,
+        cmd_args: List[str],
+    ) -> bool:
+        """
+        Check if command execution is permitted.
+
+        Args:
+            command: Command to check
+            cmd_args: Command arguments
+
+        Returns:
+            True if permitted, False otherwise
+        """
+        # Lazy import to avoid circular dependency
+        from claude_code.security.permissions import (
+            PermissionApprover,
+            PermissionDomain,
+        )
+
+        # Build full command string for permission check
+        if cmd_args:
+            full_command = f"{command} {' '.join(cmd_args)}"
+        else:
+            full_command = command
+
+        # Create approver with callback if provided
+        approver = PermissionApprover(
+            self._permission_manager,
+            approval_callback=self._approval_callback,
+        )
+
+        # Check permission
+        permission = approver.request_permission(
+            domain=PermissionDomain.COMMAND,
+            target=full_command,
+        )
+
+        return permission.granted
 
     def _build_shell_command(self, command: str, args: List[str]) -> Tuple[str, List[str]]:
         """

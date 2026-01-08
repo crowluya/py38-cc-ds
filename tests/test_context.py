@@ -843,3 +843,149 @@ def test_long_term_memory_load_with_modular_imports() -> None:
         # Content should include imported file
         claude_content = memory.get_file("CLAUDE.md").content
         assert "Shared content" in claude_content
+
+
+# ===== T071: Permission Integration Tests =====
+
+
+def test_context_manager_with_permission_allow_read() -> None:
+    """验证权限允许时读取文件"""
+    from claude_code.core.context import ContextManager
+    from claude_code.security.permissions import (
+        PermissionManager,
+        PermissionRule,
+        PermissionAction,
+        PermissionDomain,
+    )
+
+    with TemporaryDirectory() as tmpdir:
+        test_file = Path(tmpdir, "test.txt")
+        test_file.write_text("Hello, world!", encoding="utf-8")
+
+        manager = PermissionManager()
+        manager.add_rule(PermissionRule(
+            domain=PermissionDomain.FILE_READ,
+            action=PermissionAction.ALLOW,
+            pattern="*.txt",
+        ))
+
+        context_mgr = ContextManager(permission_manager=manager)
+
+        file_ctx = context_mgr.load_file(str(test_file))
+
+        assert "Hello" in file_ctx.content
+
+
+def test_context_manager_with_permission_deny_read() -> None:
+    """验证权限拒绝时不能读取文件"""
+    from claude_code.core.context import ContextManager, LoadError
+    from claude_code.security.permissions import (
+        PermissionManager,
+        PermissionRule,
+        PermissionAction,
+        PermissionDomain,
+    )
+
+    with TemporaryDirectory() as tmpdir:
+        test_file = Path(tmpdir, "test.txt")
+        test_file.write_text("Hello, world!", encoding="utf-8")
+
+        manager = PermissionManager()
+        manager.add_rule(PermissionRule(
+            domain=PermissionDomain.FILE_READ,
+            action=PermissionAction.DENY,
+            pattern="*.txt",
+        ))
+
+        context_mgr = ContextManager(permission_manager=manager)
+
+        with pytest.raises(LoadError) as exc_info:
+            context_mgr.load_file(str(test_file))
+
+        assert "permission" in str(exc_info.value).lower() or "denied" in str(exc_info.value).lower()
+
+
+def test_context_manager_with_permission_ask_granted_read() -> None:
+    """验证 ASK 权限通过时读取文件"""
+    from claude_code.core.context import ContextManager
+    from claude_code.security.permissions import (
+        PermissionManager,
+        PermissionRule,
+        PermissionAction,
+        PermissionDomain,
+    )
+
+    with TemporaryDirectory() as tmpdir:
+        test_file = Path(tmpdir, "test.txt")
+        test_file.write_text("Hello, world!", encoding="utf-8")
+
+        manager = PermissionManager()
+        manager.add_rule(PermissionRule(
+            domain=PermissionDomain.FILE_READ,
+            action=PermissionAction.ASK,
+            pattern="*.txt",
+        ))
+
+        # Callback that grants permission
+        def grant_callback(domain, target, reason):
+            return True
+
+        context_mgr = ContextManager(
+            permission_manager=manager,
+            approval_callback=grant_callback,
+        )
+
+        file_ctx = context_mgr.load_file(str(test_file))
+
+        assert "Hello" in file_ctx.content
+
+
+def test_context_manager_with_permission_ask_denied_read() -> None:
+    """验证 ASK 权限拒绝时不能读取文件"""
+    from claude_code.core.context import ContextManager, LoadError
+    from claude_code.security.permissions import (
+        PermissionManager,
+        PermissionRule,
+        PermissionAction,
+        PermissionDomain,
+    )
+
+    with TemporaryDirectory() as tmpdir:
+        test_file = Path(tmpdir, "test.txt")
+        test_file.write_text("Hello, world!", encoding="utf-8")
+
+        manager = PermissionManager()
+        manager.add_rule(PermissionRule(
+            domain=PermissionDomain.FILE_READ,
+            action=PermissionAction.ASK,
+            pattern="*.txt",
+        ))
+
+        # Callback that denies permission
+        def deny_callback(domain, target, reason):
+            return False
+
+        context_mgr = ContextManager(
+            permission_manager=manager,
+            approval_callback=deny_callback,
+        )
+
+        with pytest.raises(LoadError) as exc_info:
+            context_mgr.load_file(str(test_file))
+
+        assert "permission" in str(exc_info.value).lower() or "denied" in str(exc_info.value).lower()
+
+
+def test_context_manager_without_permission_manager() -> None:
+    """验证没有权限管理器时正常读取"""
+    from claude_code.core.context import ContextManager
+
+    with TemporaryDirectory() as tmpdir:
+        test_file = Path(tmpdir, "test.txt")
+        test_file.write_text("Hello, world!", encoding="utf-8")
+
+        context_mgr = ContextManager()
+
+        file_ctx = context_mgr.load_file(str(test_file))
+
+        assert "Hello" in file_ctx.content
