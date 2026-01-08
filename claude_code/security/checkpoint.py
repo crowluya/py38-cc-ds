@@ -18,6 +18,8 @@ from typing import Any, Dict, List, Optional
 
 import json
 
+from claude_code.config.constants import get_project_checkpoints_dir
+
 
 class CheckpointError(Exception):
     """Base exception for checkpoint errors."""
@@ -167,7 +169,7 @@ class CheckpointManager:
 
         Args:
             checkpoint_dir: Directory to store checkpoints (optional)
-            project_path: Project path, uses .claude/checkpoints if provided (optional)
+            project_path: Project path, uses .my-claude/checkpoints if provided (optional)
 
         Raises:
             ValueError: If neither checkpoint_dir nor project_path is provided
@@ -175,7 +177,7 @@ class CheckpointManager:
         if checkpoint_dir is None:
             if project_path is None:
                 raise ValueError("Must provide either checkpoint_dir or project_path")
-            checkpoint_dir = project_path / ".claude" / "checkpoints"
+            checkpoint_dir = get_project_checkpoints_dir(project_path)
 
         self.checkpoint_dir: Path = checkpoint_dir
 

@@ -16,6 +16,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
+from claude_code.config.constants import (
+    COMMANDS_DIR,
+    PROJECT_COMMANDS_DIR,
+    get_user_commands_dir,
+)
+
 
 class CommandArgumentError(Exception):
     """Error in command arguments."""
@@ -61,7 +67,7 @@ class SlashCommand:
     """
     A custom slash command.
 
-    Commands are stored as text files in `.claude/commands/` or `~/.claude/commands/`.
+    Commands are stored as text files in `.my-claude/commands/` or `~/.my-claude/commands/`.
     Each file contains a template with optional YAML frontmatter.
     """
 
@@ -221,9 +227,6 @@ class SlashCommandManager:
     - Command execution
     """
 
-    # Default command directory names
-    COMMANDS_DIR = ".claude/commands"
-
     def __init__(self) -> None:
         """Initialize SlashCommandManager."""
         self._commands: Dict[str, SlashCommand] = {}
@@ -239,7 +242,7 @@ class SlashCommandManager:
         Project commands take precedence over user commands.
 
         Args:
-            project_dir: Project directory (contains .claude/commands/)
+            project_dir: Project directory (contains .my-claude/commands/)
             user_dir: User directory (contains commands/)
         """
         # First load user commands
@@ -248,7 +251,7 @@ class SlashCommandManager:
 
         # Then project commands (will override)
         if project_dir:
-            project_commands = project_dir / self.COMMANDS_DIR
+            project_commands = project_dir / PROJECT_COMMANDS_DIR
             if project_commands.exists():
                 self._load_from_directory(project_commands)
 
@@ -364,22 +367,19 @@ def create_default_manager() -> SlashCommandManager:
     Create a SlashCommandManager with default directories.
 
     Uses:
-    - Project: .claude/commands/
-    - User: ~/.claude/commands/
+    - Project: .my-claude/commands/
+    - User: ~/.my-claude/commands/
 
     Returns:
         Configured SlashCommandManager
     """
-    import os
-
     manager = SlashCommandManager()
 
     # Get current directory for project commands
     project_dir = Path.cwd()
 
-    # Get user home directory
-    home_dir = Path(os.path.expanduser("~"))
-    user_commands = home_dir / ".claude" / "commands"
+    # Get user commands directory from constants
+    user_commands = get_user_commands_dir()
 
     manager.scan_commands(project_dir=project_dir, user_dir=user_commands)
 

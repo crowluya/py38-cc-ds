@@ -6,15 +6,21 @@ Windows 7 + Internal Network (DeepSeek R1 70B)
 
 Priority order (highest to lowest):
 1. CLI arguments
-2. Project local: .claude/settings.local.json
-3. Project shared: .claude/settings.json
-4. User global: ~/.claude/settings.json
+2. Project local: {PROJECT_CONFIG_DIR}/{SETTINGS_LOCAL_FILE}
+3. Project shared: {PROJECT_CONFIG_DIR}/{SETTINGS_FILE}
+4. User global: ~/{USER_CONFIG_DIR}/{SETTINGS_FILE}
 """
 
 import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from claude_code.config.constants import (
+    SETTINGS_FILE,
+    SETTINGS_LOCAL_FILE,
+    get_project_config_dir,
+    get_user_config_dir,
+)
 from claude_code.config.settings import Settings
 
 
@@ -87,7 +93,7 @@ class ConfigLoader:
         Returns:
             Config dict or None if not found
         """
-        config_path = Path.home() / ".claude" / "settings.json"
+        config_path = get_user_config_dir() / SETTINGS_FILE
         return self._load_json_file(config_path)
 
     def _load_project_shared_config(self) -> Optional[Dict[str, Any]]:
@@ -100,7 +106,7 @@ class ConfigLoader:
         if not self._project_root:
             return None
 
-        config_path = self._project_root / ".claude" / "settings.json"
+        config_path = get_project_config_dir(self._project_root) / SETTINGS_FILE
         return self._load_json_file(config_path)
 
     def _load_project_local_config(self) -> Optional[Dict[str, Any]]:
@@ -113,7 +119,7 @@ class ConfigLoader:
         if not self._project_root:
             return None
 
-        config_path = self._project_root / ".claude" / "settings.local.json"
+        config_path = get_project_config_dir(self._project_root) / SETTINGS_LOCAL_FILE
         return self._load_json_file(config_path)
 
     def _load_json_file(self, path: Path) -> Optional[Dict[str, Any]]:

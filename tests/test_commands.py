@@ -44,8 +44,8 @@ def test_command_manager_scan_empty_directory() -> None:
 def test_command_manager_discover_single_command() -> None:
     """验证发现单个命令"""
     with TemporaryDirectory() as tmpdir:
-        # Create .claude/commands directory
-        commands_dir = Path(tmpdir, ".claude", "commands")
+        # Create .my-claude/commands directory
+        commands_dir = Path(tmpdir, ".my-claude", "commands")
         commands_dir.mkdir(parents=True)
 
         # Create a simple command
@@ -63,7 +63,7 @@ def test_command_manager_discover_single_command() -> None:
 def test_command_manager_discover_multiple_commands() -> None:
     """验证发现多个命令"""
     with TemporaryDirectory() as tmpdir:
-        commands_dir = Path(tmpdir, ".claude", "commands")
+        commands_dir = Path(tmpdir, ".my-claude", "commands")
         commands_dir.mkdir(parents=True)
 
         (commands_dir / "deploy.txt").write_text("Deploy the app", encoding="utf-8")
@@ -84,7 +84,7 @@ def test_command_manager_project_overrides_user() -> None:
     """验证项目命令覆盖用户命令"""
     with TemporaryDirectory() as tmpdir:
         # Project command
-        project_commands = Path(tmpdir, ".claude", "commands")
+        project_commands = Path(tmpdir, ".my-claude", "commands")
         project_commands.mkdir(parents=True)
         (project_commands / "test.txt").write_text("Project test", encoding="utf-8")
 
@@ -104,7 +104,7 @@ def test_command_manager_project_overrides_user() -> None:
 def test_command_manager_get_command() -> None:
     """验证获取单个命令"""
     with TemporaryDirectory() as tmpdir:
-        commands_dir = Path(tmpdir, ".claude", "commands")
+        commands_dir = Path(tmpdir, ".my-claude", "commands")
         commands_dir.mkdir(parents=True)
 
         (commands_dir / "deploy.txt").write_text("Deploy to production", encoding="utf-8")
@@ -374,7 +374,7 @@ def test_slash_command_execute_with_frontmatter() -> None:
 def test_command_manager_execute_command() -> None:
     """验证通过管理器执行命令"""
     with TemporaryDirectory() as tmpdir:
-        commands_dir = Path(tmpdir, ".claude", "commands")
+        commands_dir = Path(tmpdir, ".my-claude", "commands")
         commands_dir.mkdir(parents=True)
 
         (commands_dir / "greet.txt").write_text(
@@ -428,7 +428,7 @@ def test_slash_command_description_fallback() -> None:
 def test_command_manager_list_with_details() -> None:
     """验证列出自命令详情"""
     with TemporaryDirectory() as tmpdir:
-        commands_dir = Path(tmpdir, ".claude", "commands")
+        commands_dir = Path(tmpdir, ".my-claude", "commands")
         commands_dir.mkdir(parents=True)
 
         (commands_dir / "deploy.txt").write_text(
@@ -452,7 +452,7 @@ Deploy the app""",
 def test_command_manager_reload() -> None:
     """验证重新加载命令"""
     with TemporaryDirectory() as tmpdir:
-        commands_dir = Path(tmpdir, ".claude", "commands")
+        commands_dir = Path(tmpdir, ".my-claude", "commands")
         commands_dir.mkdir(parents=True)
 
         (commands_dir / "test.txt").write_text("Test", encoding="utf-8")

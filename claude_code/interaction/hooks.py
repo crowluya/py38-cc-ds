@@ -18,6 +18,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from claude_code.config.constants import (
+    PROJECT_HOOKS_DIR,
+    get_project_hooks_dir,
+    get_user_hooks_dir,
+)
+
 
 # ===== Event Definitions =====
 
@@ -266,8 +272,8 @@ class HookManager:
     - Error handling (hook failures don't crash system)
     """
 
-    # Default hooks directory
-    HOOKS_DIR = ".claude/hooks"
+    # Default hooks directory (relative path for backward compatibility)
+    HOOKS_DIR = PROJECT_HOOKS_DIR
 
     def __init__(self) -> None:
         """Initialize HookManager."""
@@ -386,22 +392,18 @@ def create_default_manager() -> HookManager:
     Returns:
         Configured HookManager
     """
-    import os
-
     manager = HookManager()
 
-    # Get current directory for project hooks
-    project_dir = Path.cwd()
+    # Get user hooks directory
+    user_hooks = get_user_hooks_dir()
 
-    # Get user home directory
-    home_dir = Path(os.path.expanduser("~"))
-    user_hooks = home_dir / ".claude" / "hooks"
+    # Get project hooks directory
+    project_hooks = get_project_hooks_dir()
 
     # Load user hooks first
     manager.load_hooks_from_directory(user_hooks)
 
     # Then project hooks (will override)
-    project_hooks = project_dir / manager.HOOKS_DIR
     manager.load_hooks_from_directory(project_hooks)
 
     return manager

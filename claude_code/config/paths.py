@@ -15,6 +15,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from claude_code.config.constants import PROJECT_CONFIG_DIR, USER_CONFIG_DIR
+
 
 def expand_user_path(path: str) -> str:
     """
@@ -81,10 +83,10 @@ def get_config_directory() -> str:
     Get Claude Code configuration directory.
 
     Returns:
-        Config directory path (~/.claude)
+        Config directory path (~/.my-claude)
     """
     home = get_home_directory()
-    return str(Path(home) / ".claude")
+    return str(Path(home) / USER_CONFIG_DIR)
 
 
 def ensure_directory(path: str) -> str:
@@ -187,7 +189,7 @@ class PathResolver:
 
 def get_project_root() -> Optional[str]:
     """
-    Detect project root directory by looking for .claude directory.
+    Detect project root directory by looking for .my-claude directory.
 
     Returns:
         Project root path or None if not found
@@ -196,7 +198,7 @@ def get_project_root() -> Optional[str]:
 
     # Search up the directory tree
     for _ in range(20):  # Limit search depth
-        claude_dir = current / ".claude"
+        claude_dir = current / PROJECT_CONFIG_DIR
         if claude_dir.exists() and claude_dir.is_dir():
             return str(current)
 
