@@ -138,3 +138,12 @@ docs/.doctrees/
 examples/*/__pycache__/
 examples/*/.claude/
 
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Checkpoints (may contain sensitive conversation data)
+.claude/checkpoints/
+*.checkpoint.json
