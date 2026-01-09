@@ -430,3 +430,50 @@ class TestEnvFile:
         assert settings.llm.api_key == "sk-or-from-env"
         # Model from system env (overrides .env)
         assert settings.llm.model == "model-from-system"
+
+    def test_env_var_type_conversion(self, temp_project_dir: str) -> None:
+        """验证环境变量类型转换"""
+        env_path = Path(temp_project_dir) / ".env"
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("VERIFY_SSL=true\n")
+            f.write("MAX_TOKENS=4096\n")
+            f.write("TEMPERATURE=0.5\n")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        assert settings.llm.verify_ssl is True
+        assert settings.llm.max_tokens == 4096
+        assert settings.llm.temperature == 0.5
+
+    def test_env_var_boolean_variants(self, temp_project_dir: str) -> None:
+        """验证布尔值的各种格式"""
+        import tempfile
+        import shutil
+
+        test_cases = [
+            ("true", True),
+            ("TRUE", True),
+            ("1", True),
+            ("yes", True),
+            ("on", True),
+            ("false", False),
+            ("FALSE", False),
+            ("0", False),
+            ("no", False),
+            ("off", False),
+        ]
+
+        for value, expected in test_cases:
+            temp_dir = tempfile.mkdtemp()
+            try:
+                env_path = Path(temp_dir) / ".env"
+                with open(env_path, "w", encoding="utf-8") as f:
+                    f.write(f"VERIFY_SSL={value}\n")
+
+                loader = ConfigLoader(project_root=temp_dir)
+                settings = loader.load()
+
+                assert settings.llm.verify_ssl is expected, f"VERIFY_SSL={value} should be {expected}"
+            finally:
+                shutil.rmtree(temp_dir)

@@ -240,6 +240,20 @@ class ConfigLoader:
         for env_var, config_path in other_mappings.items():
             value = merged_env.get(env_var)
             if value is not None:
+                # Type conversion for boolean and numeric values
+                if env_var == "VERIFY_SSL":
+                    value = value.lower() in ("true", "1", "yes", "on")
+                elif env_var == "MAX_TOKENS":
+                    try:
+                        value = int(value)
+                    except ValueError:
+                        continue
+                elif env_var == "TEMPERATURE":
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        continue
+
                 # Navigate nested dict path
                 current = env_vars
                 for key in config_path[:-1]:
