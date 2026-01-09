@@ -12,6 +12,9 @@ from typing import List, Optional
 
 import click
 
+from claude_code.cli.filegen import detect_file_type
+from claude_code.cli.filegen import generate_validated
+from claude_code.cli.filegen import safe_write_text
 from claude_code.config.loader import load_settings
 from claude_code.core.agent import Agent, AgentConfig
 from claude_code.llm.factory import create_llm_client
@@ -196,6 +199,126 @@ def print_cmd(
 
 # Alias for 'print' command (since 'print' is a Python keyword)
 cli.add_command(print_cmd, name="print")
+
+
+@cli.command(name="write-file")
+@click.argument("path", required=True)
+@click.argument("instruction", required=False, default="")
+@click.option(
+    "--type",
+    "file_type",
+    type=click.Choice(["python", "requirements", "json", "markdown", "yaml", "text"]),
+    default=None,
+    help="File type hint (defaults to auto-detect from filename)",
+)
+@click.option(
+    "--overwrite/--no-overwrite",
+    default=False,
+    help="Overwrite existing file",
+)
+@click.option(
+    "--max-attempts",
+    type=int,
+    default=3,
+    show_default=True,
+    help="Max regeneration attempts if validation fails",
+)
+@click.option(
+    "-m",
+    "--model",
+    default=None,
+    help="LLM model to use",
+)
+@click.pass_context
+def write_file_cmd(
+    ctx: click.Context,
+    path: str,
+    instruction: str,
+    file_type: Optional[str],
+    overwrite: bool,
+    max_attempts: int,
+    model: Optional[str],
+) -> None:
+    """
+    Generate a single file with strict, machine-consumable output and write it to disk.
+
+    This command is designed to avoid "prose" contamination for files like requirements.txt.
+    """
+    # Determine instruction source: argument or stdin
+    user_instruction = instruction
+    if (not user_instruction or not user_instruction.strip()) and not sys.stdin.isatty():
+        try:
+            user_instruction = sys.stdin.read()
+        except Exception as e:
+            click.echo(f"Error reading from stdin: {e}", err=True)
+            raise click.Abort()
+
+    if not user_instruction or not user_instruction.strip():
+        click.echo("Error: instruction required (argument or stdin)", err=True)
+        raise click.Abort()
+
+    if max_attempts < 1:
+        click.echo("Error: --max-attempts must be >= 1", err=True)
+        raise click.Abort()
+
+    # Load configuration
+    try:
+        project_root = ctx.obj.get("project_root") if ctx.obj else None
+        if project_root is None:
+            project_root = _find_project_root()
+        settings = load_settings(project_root=project_root)
+
+        if model:
+            settings.llm.model = model
+    except Exception as e:
+        click.echo(f"Error loading configuration: {e}", err=True)
+        raise click.Abort()
+
+    # Create LLM client + agent
+    try:
+        llm_client = create_llm_client(settings)
+        agent = Agent(
+            AgentConfig(
+                llm_client=llm_client,
+                max_tokens=settings.llm.max_tokens,
+                temperature=settings.llm.temperature,
+                stream=False,
+                project_root=project_root,
+            )
+        )
+    except Exception as e:
+        click.echo(f"Error initializing agent: {e}", err=True)
+        raise click.Abort()
+
+    # Generate validated content
+    try:
+        ft = detect_file_type(path, file_type)
+
+        def _gen(prompt: str) -> str:
+            return agent.process(prompt).content
+
+        content, result = generate_validated(
+            generate_fn=_gen,
+            file_type=ft,
+            target_path=path,
+            instruction=user_instruction,
+            max_attempts=max_attempts,
+        )
+
+        if not result.ok:
+            click.echo(f"Error: could not generate valid content: {result.error}", err=True)
+            raise click.Abort()
+
+        safe_write_text(path, content, overwrite=overwrite)
+        click.echo(path)
+    except FileExistsError:
+        click.echo(f"Error: file exists (use --overwrite): {path}", err=True)
+        raise click.Abort()
+    except click.Abort:
+        raise
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        raise click.Abort()
 
 
 # ===== T090: Headless Mode Implementation =====

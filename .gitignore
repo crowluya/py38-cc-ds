@@ -137,7 +137,7 @@ docs/.doctrees/
 # 示例和临时项目
 examples/*/__pycache__/
 examples/*/.claude/
-
+flask_demo/
 
 # Environment variables
 .env
