@@ -7,9 +7,11 @@ Windows 7 + Internal Network (DeepSeek R1 70B)
 Priority order (highest to lowest):
 1. Environment variables
 2. CLI arguments
-3. Project local: {PROJECT_CONFIG_DIR}/{SETTINGS_LOCAL_FILE}
-4. Project shared: {PROJECT_CONFIG_DIR}/{SETTINGS_FILE}
-5. User global: ~/{USER_CONFIG_DIR}/{SETTINGS_FILE}
+3. Project .env.local file
+4. Project .env file
+5. Project local: {PROJECT_CONFIG_DIR}/{SETTINGS_LOCAL_FILE}
+6. Project shared: {PROJECT_CONFIG_DIR}/{SETTINGS_FILE}
+7. User global: ~/{USER_CONFIG_DIR}/{SETTINGS_FILE}
 """
 
 import json
@@ -24,6 +26,55 @@ from claude_code.config.constants import (
     get_user_config_dir,
 )
 from claude_code.config.settings import Settings
+
+
+def _parse_env_file(path: Path) -> Dict[str, str]:
+    """
+    Parse a .env file into a dictionary.
+
+    Args:
+        path: Path to .env file
+
+    Returns:
+        Dictionary of environment variables
+
+    Supports:
+    - KEY=value
+    - KEY="value with spaces"
+    - KEY='value with spaces'
+    - # Comments (ignored)
+    - Empty lines (ignored)
+    """
+    env_vars: Dict[str, str] = {}
+
+    if not path.exists():
+        return env_vars
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+
+                # Skip empty lines and comments
+                if not line or line.startswith("#"):
+                    continue
+
+                # Parse KEY=VALUE
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+
+                    # Remove quotes if present
+                    value = value.strip()
+                    if (value.startswith('"') and value.endswith('"')) or \
+                       (value.startswith("'") and value.endswith("'")):
+                        value = value[1:-1]
+
+                    env_vars[key] = value
+    except (IOError, OSError):
+        pass
+
+    return env_vars
 
 
 class ConfigLoader:
@@ -98,7 +149,12 @@ class ConfigLoader:
 
     def _load_env_config(self) -> Optional[Dict[str, Any]]:
         """
-        Load config from environment variables.
+        Load config from environment variables and .env files.
+
+        Priority (highest to lowest):
+        1. System environment variables
+        2. .env.local file (project root)
+        3. .env file (project root)
 
         Provider detection priority:
         1. OPENROUTER_API_KEY → requests provider
@@ -108,39 +164,55 @@ class ConfigLoader:
         Returns:
             Config dict or None if no env vars set
         """
+        # Collect env vars from all sources (merged, later sources override)
+        merged_env: Dict[str, str] = {}
+
+        # Layer 1: .env file (lowest priority)
+        if self._project_root:
+            env_file = self._project_root / ".env"
+            merged_env.update(_parse_env_file(env_file))
+
+        # Layer 2: .env.local file (higher priority)
+        if self._project_root:
+            env_local_file = self._project_root / ".env.local"
+            merged_env.update(_parse_env_file(env_local_file))
+
+        # Layer 3: System environment variables (highest priority - overrides all)
+        merged_env.update(os.environ)
+
         env_vars: Dict[str, Any] = {}
 
         # First, detect which provider to use (priority order)
         provider_configs = []
 
         # Check for OpenRouter
-        if "OPENROUTER_API_KEY" in os.environ:
+        if "OPENROUTER_API_KEY" in merged_env:
             provider_configs.append({
                 "name": "openrouter",
                 "provider": "requests",
-                "api_key": os.environ.get("OPENROUTER_API_KEY"),
-                "api_base": os.environ.get("OPENROUTER_BASE_URL") or os.environ.get("OPENAI_BASE_URL") or "https://openrouter.ai/api/v1",
-                "model": os.environ.get("OPENROUTER_MODEL") or os.environ.get("DEEPSEEK_MODEL") or os.environ.get("OPENAI_MODEL") or "deepseek/deepseek-r1:70b",
+                "api_key": merged_env.get("OPENROUTER_API_KEY"),
+                "api_base": merged_env.get("OPENROUTER_BASE_URL") or merged_env.get("OPENAI_BASE_URL") or "https://openrouter.ai/api/v1",
+                "model": merged_env.get("OPENROUTER_MODEL") or merged_env.get("DEEPSEEK_MODEL") or merged_env.get("OPENAI_MODEL") or "deepseek/deepseek-r1:70b",
             })
 
         # Check for DeepSeek
-        if "DEEPSEEK_API_KEY" in os.environ or "DEEPSEEK_BASE_URL" in os.environ:
+        if "DEEPSEEK_API_KEY" in merged_env or "DEEPSEEK_BASE_URL" in merged_env:
             provider_configs.append({
                 "name": "deepseek",
                 "provider": "requests",
-                "api_key": os.environ.get("DEEPSEEK_API_KEY"),
-                "api_base": os.environ.get("DEEPSEEK_BASE_URL") or os.environ.get("OPENAI_BASE_URL"),
-                "model": os.environ.get("DEEPSEEK_MODEL") or os.environ.get("OPENAI_MODEL"),
+                "api_key": merged_env.get("DEEPSEEK_API_KEY"),
+                "api_base": merged_env.get("DEEPSEEK_BASE_URL") or merged_env.get("OPENAI_BASE_URL"),
+                "model": merged_env.get("DEEPSEEK_MODEL") or merged_env.get("OPENAI_MODEL"),
             })
 
         # Check for OpenAI
-        if "OPENAI_API_KEY" in os.environ:
+        if "OPENAI_API_KEY" in merged_env:
             provider_configs.append({
                 "name": "openai",
                 "provider": "openai",
-                "api_key": os.environ.get("OPENAI_API_KEY"),
-                "api_base": os.environ.get("OPENAI_BASE_URL"),
-                "model": os.environ.get("OPENAI_MODEL"),
+                "api_key": merged_env.get("OPENAI_API_KEY"),
+                "api_base": merged_env.get("OPENAI_BASE_URL"),
+                "model": merged_env.get("OPENAI_MODEL"),
             })
 
         # Use the first (highest priority) provider config
@@ -166,7 +238,7 @@ class ConfigLoader:
         }
 
         for env_var, config_path in other_mappings.items():
-            value = os.environ.get(env_var)
+            value = merged_env.get(env_var)
             if value is not None:
                 # Navigate nested dict path
                 current = env_vars
@@ -278,3 +350,10 @@ def load_settings(
     """
     loader = ConfigLoader(project_root)
     return loader.load(cli_overrides)
+
+
+__all__ = [
+    "ConfigLoader",
+    "load_settings",
+    "_parse_env_file",
+]

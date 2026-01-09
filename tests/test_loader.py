@@ -306,3 +306,127 @@ class TestEnvironmentVariables:
         # OpenRouter should win
         assert settings.llm.provider == "requests"
         assert settings.llm.api_key == "sk-or-test"
+
+
+class TestEnvFile:
+    """测试 .env 文件解析"""
+
+    def test_parse_env_file_simple(self) -> None:
+        """验证简单的 .env 文件解析"""
+        from pathlib import Path
+        import tempfile
+        from claude_code.config.loader import _parse_env_file
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("KEY1=value1\n")
+            f.write("KEY2=value2\n")
+            f.write("# This is a comment\n")
+            f.write("\n")
+            f.write("KEY3=value3\n")
+            temp_path = Path(f.name)
+
+        try:
+            result = _parse_env_file(temp_path)
+            assert result == {
+                "KEY1": "value1",
+                "KEY2": "value2",
+                "KEY3": "value3",
+            }
+        finally:
+            temp_path.unlink()
+
+    def test_parse_env_file_with_quotes(self) -> None:
+        """验证带引号的 .env 文件解析"""
+        from pathlib import Path
+        import tempfile
+        from claude_code.config.loader import _parse_env_file
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write('KEY1="value with spaces"\n')
+            f.write("KEY2='value with single quotes'\n")
+            f.write("KEY3=value_without_quotes\n")
+            temp_path = Path(f.name)
+
+        try:
+            result = _parse_env_file(temp_path)
+            assert result["KEY1"] == "value with spaces"
+            assert result["KEY2"] == "value with single quotes"
+            assert result["KEY3"] == "value_without_quotes"
+        finally:
+            temp_path.unlink()
+
+    def test_parse_env_file_empty(self) -> None:
+        """验证空 .env 文件解析"""
+        from pathlib import Path
+        import tempfile
+        from claude_code.config.loader import _parse_env_file
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("# Only comments\n")
+            f.write("\n")
+            temp_path = Path(f.name)
+
+        try:
+            result = _parse_env_file(temp_path)
+            assert result == {}
+        finally:
+            temp_path.unlink()
+
+    def test_parse_env_file_nonexistent(self) -> None:
+        """验证不存在的 .env 文件解析"""
+        from pathlib import Path
+        from claude_code.config.loader import _parse_env_file
+
+        result = _parse_env_file(Path("/nonexistent/path/.env"))
+        assert result == {}
+
+    def test_load_from_dotenv_file(self, temp_project_dir: str) -> None:
+        """验证从 .env 文件加载配置"""
+        env_path = Path(temp_project_dir) / ".env"
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("OPENROUTER_API_KEY=sk-or-from-env\n")
+            f.write("OPENROUTER_MODEL=deepseek/deepseek-r1:70b\n")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        assert settings.llm.provider == "requests"
+        assert settings.llm.api_key == "sk-or-from-env"
+        assert settings.llm.model == "deepseek/deepseek-r1:70b"
+
+    def test_load_from_env_local_overrides_env(self, temp_project_dir: str) -> None:
+        """验证 .env.local 覆盖 .env"""
+        env_path = Path(temp_project_dir) / ".env"
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("OPENROUTER_API_KEY=sk-or-from-env\n")
+            f.write("OPENROUTER_MODEL=model-from-env\n")
+
+        env_local_path = Path(temp_project_dir) / ".env.local"
+        with open(env_local_path, "w", encoding="utf-8") as f:
+            f.write("OPENROUTER_MODEL=model-from-local\n")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        # API key from .env
+        assert settings.llm.api_key == "sk-or-from-env"
+        # Model from .env.local (overrides .env)
+        assert settings.llm.model == "model-from-local"
+
+    def test_system_env_overrides_env_files(self, temp_project_dir: str, monkeypatch) -> None:
+        """验证系统环境变量覆盖 .env 文件"""
+        # System env should override - set it first
+        monkeypatch.setenv("OPENROUTER_MODEL", "model-from-system")
+
+        env_path = Path(temp_project_dir) / ".env"
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("OPENROUTER_API_KEY=sk-or-from-env\n")
+            f.write("OPENROUTER_MODEL=model-from-env\n")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        # API key from .env (not in system env)
+        assert settings.llm.api_key == "sk-or-from-env"
+        # Model from system env (overrides .env)
+        assert settings.llm.model == "model-from-system"
