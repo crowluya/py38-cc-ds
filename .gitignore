@@ -137,6 +137,8 @@ docs/.doctrees/
 # 示例和临时项目
 examples/*/__pycache__/
 examples/*/.claude/
+
+# Local demo project (generated for testing pycc workflow)
 flask_demo/
 
 # Environment variables

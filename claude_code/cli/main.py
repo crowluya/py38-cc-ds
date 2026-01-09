@@ -6,6 +6,7 @@ Windows 7 + Internal Network (DeepSeek R1 70B)
 """
 
 import os
+import shlex
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -657,6 +658,14 @@ def _handle_interactive_mode(
                 if not user_input.strip():
                     continue
 
+                if user_input.strip().startswith("/"):
+                    _handle_local_command(
+                        agent=agent,
+                        user_input=user_input.strip(),
+                        project_root=project_root,
+                    )
+                    continue
+
                 # Process input
                 _process_input(agent, user_input.strip())
 
@@ -811,6 +820,214 @@ def _process_input(agent: Agent, user_input: str) -> None:
         console.print(Text("(No response)", style="dim"))
 
     console.print()  # Blank line between turns
+
+
+def _resolve_under_root(project_root: str, user_path: str) -> str:
+    base = Path(project_root).resolve()
+    p = Path(user_path)
+    if not p.is_absolute():
+        p = (base / p).resolve()
+    else:
+        p = p.resolve()
+    try:
+        p.relative_to(base)
+    except Exception:
+        raise ValueError(f"path escapes project_root: {user_path}")
+    return str(p)
+
+
+def _format_dir_listing(root: str, recursive: bool, max_entries: int) -> str:
+    root_p = Path(root)
+    if not root_p.exists():
+        return f"Error: directory not found: {root}"
+    if not root_p.is_dir():
+        return f"Error: not a directory: {root}"
+
+    items = []
+    if recursive:
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames.sort()
+            filenames.sort()
+            for dn in dirnames:
+                items.append(str(Path(dirpath, dn)))
+                if len(items) >= max_entries:
+                    break
+            if len(items) >= max_entries:
+                break
+            for fn in filenames:
+                items.append(str(Path(dirpath, fn)))
+                if len(items) >= max_entries:
+                    break
+            if len(items) >= max_entries:
+                break
+    else:
+        for child in sorted(root_p.iterdir(), key=lambda x: x.name.lower()):
+            items.append(str(child))
+            if len(items) >= max_entries:
+                break
+
+    rel_items = []
+    base = root_p
+    for it in items:
+        try:
+            rel_items.append(str(Path(it).relative_to(base)))
+        except Exception:
+            rel_items.append(str(Path(it)))
+
+    suffix = "\n... (truncated)" if len(items) >= max_entries else ""
+    return "\n".join(rel_items) + suffix
+
+
+def _handle_local_command(agent: Agent, user_input: str, project_root: str) -> None:
+    from rich.console import Console
+    from rich.text import Text
+    from claude_code.cli.filegen import detect_file_type, generate_validated, safe_write_text
+
+    console = Console()
+    try:
+        # Windows-friendly: preserve backslashes in paths (e.g. ..\README.md)
+        parts = shlex.split(user_input, posix=False)
+    except Exception as e:
+        console.print(Text(f"Error parsing command: {e}", style="red"))
+        return
+
+    if not parts:
+        return
+
+    cmd = parts[0].lstrip("/").lower()
+    args = parts[1:]
+
+    if cmd in ("help", "?"):
+        console.print(
+            Text(
+                "Local commands: /mkdir PATH | /read-file PATH | /read-dir PATH [--recursive/--no-recursive] [--max N] | /write-file PATH -- CONTENT | /gen-file PATH [--type T] [--overwrite] [--max-attempts N] -- INSTRUCTION",
+                style="dim",
+            )
+        )
+        return
+
+    try:
+        if cmd == "mkdir":
+            if not args:
+                raise ValueError("mkdir requires PATH")
+            target = _resolve_under_root(project_root, args[0])
+            Path(target).mkdir(parents=True, exist_ok=True)
+            console.print(Text(f"OK: created {args[0]}", style="green"))
+            return
+
+        if cmd == "read-file":
+            if not args:
+                raise ValueError("read-file requires PATH")
+            target = _resolve_under_root(project_root, args[0])
+            p = Path(target)
+            if not p.exists() or not p.is_file():
+                raise ValueError(f"file not found: {args[0]}")
+            content = p.read_text(encoding="utf-8")
+            console.print(Text(content))
+            return
+
+        if cmd == "read-dir":
+            if not args:
+                raise ValueError("read-dir requires PATH")
+            recursive = True
+            max_entries = 200
+            path_arg = None
+            i = 0
+            while i < len(args):
+                a = args[i]
+                if a == "--recursive":
+                    recursive = True
+                elif a == "--no-recursive":
+                    recursive = False
+                elif a == "--max":
+                    i += 1
+                    if i >= len(args):
+                        raise ValueError("--max requires integer")
+                    max_entries = int(args[i])
+                else:
+                    if path_arg is None:
+                        path_arg = a
+                    else:
+                        raise ValueError(f"unexpected argument: {a}")
+                i += 1
+            if path_arg is None:
+                raise ValueError("read-dir requires PATH")
+            target = _resolve_under_root(project_root, path_arg)
+            listing = _format_dir_listing(target, recursive=recursive, max_entries=max_entries)
+            console.print(Text(listing))
+            return
+
+        if cmd == "write-file":
+            if not args:
+                raise ValueError("write-file requires PATH")
+            if "--" not in args:
+                raise ValueError("write-file requires -- CONTENT")
+            sep = args.index("--")
+            path_arg = args[0]
+            content = " ".join(args[sep + 1 :])
+            target = _resolve_under_root(project_root, path_arg)
+            safe_write_text(target, content + "\n", overwrite=True)
+            console.print(Text(f"OK: wrote {path_arg}", style="green"))
+            return
+
+        if cmd == "gen-file":
+            if not args:
+                raise ValueError("gen-file requires PATH")
+            if "--" not in args:
+                raise ValueError("gen-file requires -- INSTRUCTION")
+            sep = args.index("--")
+            pre = args[:sep]
+            instruction = " ".join(args[sep + 1 :]).strip()
+            if not instruction:
+                raise ValueError("gen-file instruction is empty")
+
+            path_arg = pre[0]
+            file_type = None
+            overwrite = False
+            max_attempts = 3
+            i = 1
+            while i < len(pre):
+                a = pre[i]
+                if a == "--type":
+                    i += 1
+                    if i >= len(pre):
+                        raise ValueError("--type requires value")
+                    file_type = pre[i]
+                elif a == "--overwrite":
+                    overwrite = True
+                elif a == "--max-attempts":
+                    i += 1
+                    if i >= len(pre):
+                        raise ValueError("--max-attempts requires integer")
+                    max_attempts = int(pre[i])
+                else:
+                    raise ValueError(f"unexpected argument: {a}")
+                i += 1
+
+            target = _resolve_under_root(project_root, path_arg)
+            ft = detect_file_type(target, file_type)
+
+            def _gen(prompt: str) -> str:
+                return agent.process(prompt).content
+
+            content, result = generate_validated(
+                generate_fn=_gen,
+                file_type=ft,
+                target_path=target,
+                instruction=instruction,
+                max_attempts=max_attempts,
+            )
+
+            if not result.ok:
+                raise ValueError(f"could not generate valid content: {result.error}")
+
+            safe_write_text(target, content, overwrite=overwrite)
+            console.print(Text(f"OK: generated {path_arg}", style="green"))
+            return
+
+        console.print(Text(f"Unknown local command: /{cmd} (try /help)", style="yellow"))
+    except Exception as e:
+        console.print(Text(f"Error: {e}", style="red"))
 
 
 class _Styles:
