@@ -137,12 +137,11 @@ def chat(
             json_stream_output=json_stream_output,
         )
     else:
-        click.echo("Interactive chat mode (not yet implemented)")
-
-    if prompt and not print_mode:
-        click.echo(f"Prompt: {prompt}")
-    if model and not print_mode:
-        click.echo(f"Model: {model}")
+        _handle_interactive_mode(
+            ctx,
+            prompt,
+            model,
+        )
 
 
 @cli.command()
@@ -401,15 +400,15 @@ def _handle_json_stream_output(agent: Agent, user_input: str) -> None:
     from claude_code.cli.output import format_json_stream_chunk, format_tool_calls_for_json
 
     # Add user message
-    agent._add_user_message(user_input)
+    agent.add_user_message(user_input)
 
     # Get streaming response
-    messages = agent._format_messages_for_llm()
+    messages = agent.get_formatted_messages()
 
-    chunks = agent._config.llm_client.chat_completion_stream(
+    chunks = agent.llm_client.chat_completion_stream(
         messages=messages,
-        max_tokens=agent._config.max_tokens,
-        temperature=agent._config.temperature,
+        max_tokens=agent.config.max_tokens,
+        temperature=agent.config.temperature,
     )
 
     # Stream each chunk as JSON
@@ -455,6 +454,254 @@ def _format_error_json(error_message: str) -> str:
         "timestamp": None,
     }
     return json.dumps(error_dict, ensure_ascii=False)
+
+
+# ===== T012: Interactive Mode Implementation =====
+
+
+def _handle_interactive_mode(
+    ctx: click.Context,
+    initial_prompt: str,
+    model: Optional[str],
+) -> None:
+    """
+    Handle interactive chat mode.
+
+    Args:
+        ctx: Click context
+        initial_prompt: Optional initial prompt to send
+        model: Optional model override
+
+    Raises:
+        SystemExit: On error
+    """
+    # Load configuration
+    try:
+        project_root = ctx.obj.get("project_root") if ctx.obj else None
+        if project_root is None:
+            project_root = _find_project_root()
+        settings = load_settings(project_root=project_root)
+
+        # Apply model override if provided
+        if model:
+            settings.llm.model = model
+
+    except Exception as e:
+        click.echo(f"Error loading configuration: {e}", err=True)
+        sys.exit(1)
+
+    # Create LLM client
+    try:
+        llm_client = create_llm_client(settings)
+    except Exception as e:
+        click.echo(f"Error creating LLM client: {e}", err=True)
+        sys.exit(1)
+
+    # Create agent
+    try:
+        agent_config = AgentConfig(
+            llm_client=llm_client,
+            max_tokens=settings.llm.max_tokens,
+            temperature=settings.llm.temperature,
+            stream=False,  # No streaming in interactive mode
+            project_root=project_root,
+        )
+        agent = Agent(agent_config)
+    except Exception as e:
+        click.echo(f"Error initializing agent: {e}", err=True)
+        sys.exit(1)
+
+    # Show welcome message
+    _print_welcome(settings)
+
+    # Process initial prompt if provided
+    if initial_prompt and initial_prompt.strip():
+        _process_input(agent, initial_prompt.strip())
+
+    # Main interactive loop
+    try:
+        while True:
+            try:
+                # Read user input
+                user_input = _read_input()
+
+                # Check for exit commands
+                if not user_input or user_input.strip().lower() in ("exit", "quit", "q"):
+                    click.echo("\nGoodbye!")
+                    break
+
+                # Skip empty input
+                if not user_input.strip():
+                    continue
+
+                # Process input
+                _process_input(agent, user_input.strip())
+
+            except EOFError:
+                click.echo("\nGoodbye!")
+                break
+            except KeyboardInterrupt:
+                click.echo("\nUse 'exit' or 'quit' to exit, or Ctrl+D to end.")
+                continue
+
+    except Exception as e:
+        click.echo(f"\nError: {e}", err=True)
+        sys.exit(1)
+
+
+def _print_welcome(settings) -> None:
+    """
+    Print welcome message for interactive mode.
+
+    Args:
+        settings: Loaded settings
+    """
+    from rich.console import Console
+    from rich.text import Text
+
+    console = Console()
+
+    # Welcome banner
+    welcome_text = Text()
+    welcome_text.append("Claude Code Python MVP", style="bold cyan")
+    welcome_text.append(f" v{VERSION}", style="dim cyan")
+    console.print(welcome_text)
+
+    # Show model info
+    model_info = f"Model: {settings.llm.model}"
+    console.print(Text(model_info, style="dim"))
+
+    # Show help hint
+    help_hint = "Type 'exit', 'quit', or 'q' to exit. Ctrl+D also works."
+    console.print(Text(help_hint, style="dim"))
+    console.print()
+
+
+def _read_input() -> str:
+    """
+    Read user input from stdin.
+
+    Returns:
+        User input string
+
+    Raises:
+        EOFError: On EOF (Ctrl+D)
+    """
+    try:
+        # Use prompt_toolkit for better input handling if available
+        from prompt_toolkit import prompt
+        from prompt_toolkit.formatted_text import FormattedText
+
+        user_input = prompt(
+            FormattedText([
+                ("class:prompt", ">>> "),
+            ]),
+            style=cls.__dict__.get("style", None)
+        )
+        return user_input
+    except Exception:
+        # Fallback to built-in input
+        try:
+            return input(">>> ")
+        except EOFError:
+            raise
+
+
+def _process_input(agent: Agent, user_input: str) -> None:
+    """
+    Process user input in interactive mode.
+
+    Args:
+        agent: Agent instance
+        user_input: User's input string
+    """
+    from rich.console import Console
+    from rich.markdown import Markdown
+    from claude_code.interaction.parser import Parser
+    from claude_code.core.context import ContextManager
+
+    console = Console()
+
+    # Parse input for @file, @dir/, !command references
+    parser = Parser()
+    parsed = parser.parse(user_input)
+
+    # Build enhanced prompt with context from references
+    enhanced_input = user_input
+    context_parts = []
+
+    # Process file references
+    if parsed.file_refs:
+        ctx_mgr = ContextManager()
+        for file_ref in parsed.file_refs:
+            try:
+                file_context = ctx_mgr.load_file(
+                    file_ref.path,
+                    line_range=file_ref.line_range,
+                )
+                context_parts.append(file_context.format())
+            except Exception as e:
+                console.print(Text(f"[Warning] Could not load file {file_ref.path}: {e}", style="yellow"))
+
+    # Process directory references
+    if parsed.directory_refs:
+        ctx_mgr = ContextManager()
+        for dir_ref in parsed.directory_refs:
+            try:
+                dir_context = ctx_mgr.load_directory(dir_ref.path, recursive=dir_ref.recursive)
+                context_parts.append(dir_context.format())
+            except Exception as e:
+                console.print(Text(f"[Warning] Could not load directory {dir_ref.path}: {e}", style="yellow"))
+
+    # Process command references
+    if parsed.command_refs:
+        from claude_code.core.executor import CommandExecutor
+        cmd_executor = CommandExecutor()
+        for cmd_ref in parsed.command_refs:
+            try:
+                cmd_result = cmd_executor.execute(cmd_ref.command)
+                output = cmd_result.combined_output()
+                context_parts.append(f"Command: {cmd_ref.command}\n{output}")
+            except Exception as e:
+                console.print(Text(f"[Warning] Command execution failed: {e}", style="yellow"))
+
+    # Prepend context to prompt if any references were found
+    if context_parts:
+        context_block = "--- Context ---\n" + "\n\n".join(context_parts) + "\n--- End Context ---\n\n"
+        enhanced_input = context_block + parsed.prompt
+    else:
+        # No references found, use original input
+        enhanced_input = user_input
+
+    # Show thinking indicator
+    with console.status("[bold yellow]Thinking...") as status:
+        try:
+            turn = agent.process(enhanced_input)
+        except Exception as e:
+            console.print(Text(f"Error: {e}", style="red"))
+            return
+
+    # Print response (use Markdown formatting)
+    if turn.content:
+        console.print(Markdown(turn.content))
+    else:
+        console.print(Text("(No response)", style="dim"))
+
+    console.print()  # Blank line between turns
+
+
+class _Styles:
+    """Styles for prompt_toolkit."""
+    style = """
+    <style>
+    prompt {
+        font-weight: bold;
+        text-color: cyan;
+    }
+    </style>
+    """
+
+cls = _Styles()
 
 
 def main(args: List[str] = None) -> int:

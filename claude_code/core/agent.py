@@ -762,6 +762,34 @@ class Agent:
         """Add system message to history."""
         self._history.append(Message(role=MessageRole.SYSTEM, content=content))
 
+    def add_user_message(self, content: str) -> None:
+        """
+        Add a user message to history.
+
+        Args:
+            content: Message content
+        """
+        self._history.append(Message(role=MessageRole.USER, content=content))
+
+    def get_formatted_messages(self) -> List[Dict[str, Any]]:
+        """
+        Format message history for LLM.
+
+        Returns:
+            List of message dictionaries
+        """
+        return self._format_messages_for_llm()
+
+    @property
+    def config(self) -> AgentConfig:
+        """Get agent configuration."""
+        return self._config
+
+    @property
+    def llm_client(self) -> Any:
+        """Get LLM client."""
+        return self._config.llm_client
+
     def _add_tool_message(self, tool_result: ToolResult) -> None:
         """Add tool result message to history."""
         self._history.append(

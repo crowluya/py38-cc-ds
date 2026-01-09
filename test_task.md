@@ -33,7 +33,7 @@
 |------|------|------|
 | T010: CLI 入口 | ✅ | `--help` 工作正常 |
 | T011: 终端输出封装 (rich) | ⚠️ | 基础输出可用，Rich 格式化未充分测试 |
-| T012: 交互式输入封装 (prompt_toolkit) | ❌ | 未实现交互模式 |
+| T012: 交互式输入封装 (prompt_toolkit) | ✅ | `claude-code chat` |
 | T013: 审批交互封装 (questionary) | ❌ | 未实现 |
 
 ---
@@ -161,19 +161,13 @@
 
 | 任务 | 优先级 | 依赖 |
 |------|--------|------|
-| T012: 交互式 REPL | 高 | T010, T011 |
 | T100: Windows 7 测试 | 高 | Win7 环境 |
 
 ---
 
 ## 下一步测试计划
 
-1. **T012: 交互式 REPL**
-   - 实现交互式输入循环
-   - 支持多轮对话上下文保持
-   - 支持 Ctrl+D 退出
-
-2. **T100: Windows 7 兼容性测试**
+1. **T100: Windows 7 兼容性测试**
    - 需要在 Windows 7 环境中测试
 
 ---
@@ -200,6 +194,15 @@
 - `DirectoryLoader` 类已实现 gitignore 过滤
 - 测试命令：`claude-code print "@/tmp/test_gitignore/ 这个目录有哪些文件？" -o text`
 - 结果：正确过滤 `*.log`、`node_modules/`、`*.tmp`、`.DS_Store` 等文件
+
+### T012: 交互式 REPL 模式 ✅
+
+- 实现了 `_handle_interactive_mode()` 函数
+- 支持多轮对话上下文保持
+- 支持 `exit`、`quit`、`q` 命令退出
+- 支持 Ctrl+D 退出
+- 测试命令：`claude-code chat`
+- 结果：交互模式正常工作，支持 @file、@dir/、!command 语法
 
 ---
 
