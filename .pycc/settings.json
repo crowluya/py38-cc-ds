@@ -1,0 +1,11 @@
+{
+  "respectGitignore": true,
+  "permissions": {
+    "defaultMode": "ask",
+    "allow": [
+      "Read(**/*)",
+      "Edit(**/*.py)",
+      "Write(**/*.py)"
+    ]
+  }
+}

@@ -6,6 +6,7 @@ Windows 7 + Internal Network (DeepSeek R1 70B)
 """
 
 from dataclasses import dataclass, field
+import re
 from typing import Any, Dict, List, Optional
 
 
@@ -127,12 +128,42 @@ class Settings:
         )
 
         perm_data = data.get("permissions", {})
+
+        default_mode = perm_data.get("default_mode")
+        if default_mode is None:
+            default_mode = perm_data.get("defaultMode", "ask")
+
+        file_read = list(perm_data.get("file_read", []))
+        file_write = list(perm_data.get("file_write", []))
+        command_execute = list(perm_data.get("command_execute", []))
+        network_access = list(perm_data.get("network_access", []))
+
+        allow_list = perm_data.get("allow", [])
+        if isinstance(allow_list, list):
+            for item in allow_list:
+                if not isinstance(item, str):
+                    continue
+                m = re.match(r"^\s*([A-Za-z_]+)\((.*)\)\s*$", item)
+                if not m:
+                    continue
+                verb = m.group(1).strip().lower()
+                pattern = m.group(2).strip()
+                if not pattern:
+                    continue
+                if verb in ("read", "file_read"):
+                    file_read.append(pattern)
+                elif verb in ("write", "edit", "file_write"):
+                    file_write.append(pattern)
+                elif verb in ("run", "command", "exec", "execute"):
+                    command_execute.append(pattern)
+                elif verb in ("network", "net"):
+                    network_access.append(pattern)
         permissions = PermissionSettings(
-            default_mode=perm_data.get("default_mode", "ask"),
-            file_read=perm_data.get("file_read", []),
-            file_write=perm_data.get("file_write", []),
-            command_execute=perm_data.get("command_execute", []),
-            network_access=perm_data.get("network_access", []),
+            default_mode=str(default_mode or "ask"),
+            file_read=file_read,
+            file_write=file_write,
+            command_execute=command_execute,
+            network_access=network_access,
         )
 
         hook_data = data.get("hooks", {})
