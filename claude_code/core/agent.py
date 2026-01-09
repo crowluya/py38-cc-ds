@@ -467,14 +467,28 @@ class Agent:
             **kwargs
         )
 
+        # Extract content from response (dict or object)
+        if isinstance(response, dict):
+            content = response.get("content", "")
+            finish_reason = response.get("finish_reason", "stop")
+        else:
+            content = getattr(response, "content", "")
+            finish_reason = getattr(response, "finish_reason", "stop")
+
         # Extract tool calls if present
         tool_calls = None
-        if hasattr(response, "tool_calls") and response.tool_calls:
-            tool_calls = self._parse_tool_calls(response.tool_calls)
+        tool_calls_data = None
+        if isinstance(response, dict):
+            tool_calls_data = response.get("tool_calls")
+        elif hasattr(response, "tool_calls"):
+            tool_calls_data = response.tool_calls
+
+        if tool_calls_data:
+            tool_calls = self._parse_tool_calls(tool_calls_data)
 
         return ConversationTurn(
-            content=getattr(response, "content", ""),
-            finish_reason=getattr(response, "finish_reason", "stop"),
+            content=content,
+            finish_reason=finish_reason,
             tool_calls=tool_calls,
             raw_response=response,
         )
@@ -496,7 +510,11 @@ class Agent:
 
         content_parts = []
         for chunk in chunks:
-            if hasattr(chunk, "content"):
+            # Handle both dict and object chunks
+            if isinstance(chunk, dict):
+                delta = chunk.get("delta", "")
+                content_parts.append(delta)
+            elif hasattr(chunk, "content"):
                 content_parts.append(chunk.content)
 
         content = "".join(content_parts)

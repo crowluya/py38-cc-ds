@@ -356,14 +356,50 @@ def load_settings(
     Convenience function to load settings.
 
     Args:
-        project_root: Project root directory path
+        project_root: Project root directory path (auto-detected if None)
         cli_overrides: Optional CLI argument overrides
 
     Returns:
         Merged Settings instance
     """
+    # Auto-detect project root if not provided
+    if project_root is None:
+        project_root = _find_project_root_auto()
+
     loader = ConfigLoader(project_root)
     return loader.load(cli_overrides)
+
+
+def _find_project_root_auto() -> Optional[str]:
+    """
+    Auto-detect project root by looking for markers.
+
+    Searches upward from current directory.
+
+    Returns:
+        Project root path as string, or None if not found
+    """
+    from pathlib import Path as PathLib
+
+    cwd = PathLib.cwd()
+
+    # Search upward from current directory
+    for path in [cwd] + list(cwd.parents):
+        # Check for project markers
+        if (path / ".env.local").exists():
+            return str(path)
+        if (path / ".env").exists():
+            return str(path)
+        if (path / ".my-claude").exists():
+            return str(path)
+        if (path / "pyproject.toml").exists():
+            return str(path)
+        if (path / "setup.py").exists():
+            return str(path)
+        if (path / ".git").exists():
+            return str(path)
+
+    return None
 
 
 __all__ = [

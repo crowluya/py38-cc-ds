@@ -5,7 +5,9 @@ Python 3.8.10 compatible
 Windows 7 + Internal Network (DeepSeek R1 70B)
 """
 
+import os
 import sys
+from pathlib import Path
 from typing import List, Optional
 
 import click
@@ -17,6 +19,36 @@ from claude_code.llm.factory import create_llm_client
 
 # Version constant
 VERSION = "0.1.0"
+
+
+def _find_project_root() -> Optional[str]:
+    """
+    Find project root by looking for .env, .env.local, or .my-claude directory.
+
+    Searches upward from current directory until finding a project marker.
+
+    Returns:
+        Project root path as string, or None if not found
+    """
+    cwd = Path.cwd()
+
+    # Search upward from current directory
+    for path in [cwd] + list(cwd.parents):
+        # Check for project markers
+        if (path / ".env.local").exists():
+            return str(path)
+        if (path / ".env").exists():
+            return str(path)
+        if (path / ".my-claude").exists():
+            return str(path)
+        if (path / "pyproject.toml").exists():
+            return str(path)
+        if (path / "setup.py").exists():
+            return str(path)
+        if (path / ".git").exists():
+            return str(path)
+
+    return None
 
 
 @click.group()
@@ -87,14 +119,14 @@ def chat(
             "Error: --json and --json-stream require -p/--print mode",
             err=True,
         )
-        raise click.Exit(1)
+        raise click.Abort()
 
     if json_output and json_stream_output:
         click.echo(
             "Error: Cannot specify both --json and --json-stream",
             err=True,
         )
-        raise click.Exit(1)
+        raise click.Abort()
 
     if print_mode:
         _handle_headless_mode(
@@ -188,7 +220,7 @@ def _handle_headless_mode(
         json_stream_output: Output as streaming JSON
 
     Raises:
-        click.Exit: On error or completion
+        SystemExit: On error
     """
     # Determine input source: prompt argument or stdin
     user_input = prompt
@@ -201,7 +233,7 @@ def _handle_headless_mode(
                 user_input = sys.stdin.read()
             except Exception as e:
                 click.echo(f"Error reading from stdin: {e}", err=True)
-                raise click.Exit(1)
+                sys.exit(1)
         else:
             # No input source available
             click.echo(
@@ -209,15 +241,18 @@ def _handle_headless_mode(
                 "Provide PROMPT argument or pipe via stdin.",
                 err=True,
             )
-            raise click.Exit(1)
+            sys.exit(1)
 
     if not user_input.strip():
         click.echo("Error: Empty prompt", err=True)
-        raise click.Exit(1)
+        sys.exit(1)
 
     # Load configuration
     try:
+        # Use project_root from context, or auto-detect
         project_root = ctx.obj.get("project_root") if ctx.obj else None
+        if project_root is None:
+            project_root = _find_project_root()
         settings = load_settings(project_root=project_root)
 
         # Apply model override if provided
@@ -226,14 +261,14 @@ def _handle_headless_mode(
 
     except Exception as e:
         click.echo(f"Error loading configuration: {e}", err=True)
-        raise click.Exit(1)
+        sys.exit(1)
 
     # Create LLM client
     try:
         llm_client = create_llm_client(settings)
     except Exception as e:
         click.echo(f"Error creating LLM client: {e}", err=True)
-        raise click.Exit(1)
+        sys.exit(1)
 
     # Create agent
     try:
@@ -246,17 +281,76 @@ def _handle_headless_mode(
         agent = Agent(agent_config)
     except Exception as e:
         click.echo(f"Error initializing agent: {e}", err=True)
-        raise click.Exit(1)
+        sys.exit(1)
 
     # Process prompt and print response
     try:
+        # Parse input for @file, @dir/, !command references
+        from claude_code.interaction.parser import Parser
+        from claude_code.core.context import ContextManager
+
+        parser = Parser()
+        parsed = parser.parse(user_input)
+
+        # Build enhanced prompt with context from references
+        enhanced_input = user_input
+        context_parts = []
+
+        # Process file references
+        if parsed.file_refs:
+            ctx_mgr = ContextManager()
+            for file_ref in parsed.file_refs:
+                try:
+                    file_context = ctx_mgr.load_file(
+                        file_ref.path,
+                        line_range=file_ref.line_range,
+                    )
+                    context_parts.append(file_context.format())
+                except Exception as e:
+                    click.echo(f"Warning: Could not load file {file_ref.path}: {e}", err=True)
+
+        # Process directory references
+        if parsed.directory_refs:
+            ctx_mgr = ContextManager()
+            for dir_ref in parsed.directory_refs:
+                try:
+                    dir_context = ctx_mgr.load_directory(dir_ref.path, recursive=dir_ref.recursive)
+                    context_parts.append(dir_context.format())
+                except Exception as e:
+                    click.echo(f"Warning: Could not load directory {dir_ref.path}: {e}", err=True)
+
+        # Process command references
+        if parsed.command_refs:
+            from claude_code.core.executor import CommandExecutor
+            cmd_executor = CommandExecutor()
+            for cmd_ref in parsed.command_refs:
+                try:
+                    cmd_result = cmd_executor.execute(cmd_ref.command)
+                    output = cmd_result.combined_output()
+                    context_parts.append(f"Command: {cmd_ref.command}\n{output}")
+                except Exception as e:
+                    click.echo(f"Warning: Command execution failed: {e}", err=True)
+
+        # Prepend context to prompt if any references were found
+        if context_parts:
+            context_block = "--- Context ---\n" + "\n\n".join(context_parts) + "\n--- End Context ---\n\n"
+            enhanced_input = context_block + parsed.prompt
+        else:
+            # No references found, use original input
+            enhanced_input = user_input
+
+        # Debug: show what's being sent to the agent (for testing)
+        import os
+        if os.environ.get("DEBUG_CLI"):
+            click.echo(f"[DEBUG] Enhanced input:\n{enhanced_input[:500]}...", err=True)
+
         if json_stream_output:
-            _handle_json_stream_output(agent, user_input)
+            _handle_json_stream_output(agent, enhanced_input)
         elif json_output:
-            _handle_json_output(agent, user_input)
+            _handle_json_output(agent, enhanced_input)
         else:
             # Regular text output
-            turn = agent.process(user_input)
+            turn = agent.process(enhanced_input)
             click.echo(turn.content)
     except Exception as e:
         # Format error as JSON if in JSON mode
@@ -265,7 +359,7 @@ def _handle_headless_mode(
             click.echo(error_json)
         else:
             click.echo(f"Error processing prompt: {e}", err=True)
-        raise click.Exit(1)
+        sys.exit(1)
 
 
 # ===== T091: JSON Output Helpers =====
@@ -319,8 +413,16 @@ def _handle_json_stream_output(agent: Agent, user_input: str) -> None:
 
     # Stream each chunk as JSON
     for chunk in chunks:
-        if hasattr(chunk, "content"):
-            json_chunk = format_json_stream_chunk(content=chunk.content, done=False)
+        # Handle both dict and object chunks
+        if isinstance(chunk, dict):
+            content = chunk.get("delta", "")
+        elif hasattr(chunk, "content"):
+            content = chunk.content
+        else:
+            continue
+
+        if content:
+            json_chunk = format_json_stream_chunk(content=content, done=False)
             click.echo(json_chunk)
 
     # Send final chunk with done=True
