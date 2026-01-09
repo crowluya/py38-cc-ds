@@ -5,13 +5,15 @@ Python 3.8.10 compatible
 Windows 7 + Internal Network (DeepSeek R1 70B)
 
 Priority order (highest to lowest):
-1. CLI arguments
-2. Project local: {PROJECT_CONFIG_DIR}/{SETTINGS_LOCAL_FILE}
-3. Project shared: {PROJECT_CONFIG_DIR}/{SETTINGS_FILE}
-4. User global: ~/{USER_CONFIG_DIR}/{SETTINGS_FILE}
+1. Environment variables
+2. CLI arguments
+3. Project local: {PROJECT_CONFIG_DIR}/{SETTINGS_LOCAL_FILE}
+4. Project shared: {PROJECT_CONFIG_DIR}/{SETTINGS_FILE}
+5. User global: ~/{USER_CONFIG_DIR}/{SETTINGS_FILE}
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -53,7 +55,7 @@ class ConfigLoader:
         # Start with defaults
         settings = Settings()
 
-        # Layer 4: User global config (lowest priority)
+        # Layer 5: User global config (lowest priority)
         user_config = self._load_user_global_config()
         if user_config:
             settings = Settings.from_dict(self._merge_dicts(
@@ -61,7 +63,7 @@ class ConfigLoader:
                 user_config
             ))
 
-        # Layer 3: Project shared config
+        # Layer 4: Project shared config
         project_config = self._load_project_shared_config()
         if project_config:
             settings = Settings.from_dict(self._merge_dicts(
@@ -69,12 +71,20 @@ class ConfigLoader:
                 project_config
             ))
 
-        # Layer 2: Project local config
+        # Layer 3: Project local config
         local_config = self._load_project_local_config()
         if local_config:
             settings = Settings.from_dict(self._merge_dicts(
                 settings.to_dict(),
                 local_config
+            ))
+
+        # Layer 2: Environment variables
+        env_config = self._load_env_config()
+        if env_config:
+            settings = Settings.from_dict(self._merge_dicts(
+                settings.to_dict(),
+                env_config
             ))
 
         # Layer 1: CLI overrides (highest priority)
@@ -86,9 +96,49 @@ class ConfigLoader:
 
         return settings
 
+    def _load_env_config(self) -> Optional[Dict[str, Any]]:
+        """
+        Load config from environment variables.
+
+        Returns:
+            Config dict or None if no env vars set
+        """
+        env_vars: Dict[str, Any] = {}
+
+        # Map environment variables to config paths
+        env_mappings = {
+            "DEEPSEEK_API_KEY": ("llm", "api_key"),
+            "DEEPSEEK_BASE_URL": ("llm", "api_base"),
+            "DEEPSEEK_MODEL": ("llm", "model"),
+            "DEFAULT_PERMISSION_MODE": ("permissions", "default_mode"),
+            "LOG_LEVEL": ("log_level",),
+            "VERIFY_SSL": ("llm", "verify_ssl"),
+            "CA_CERT_PATH": ("llm", "ca_cert"),
+            "MAX_TOKENS": ("llm", "max_tokens"),
+            "TEMPERATURE": ("llm", "temperature"),
+        }
+
+        for env_var, config_path in env_mappings.items():
+            value = os.environ.get(env_var)
+            if value is not None:
+                # Navigate nested dict path
+                current = env_vars
+                for key in config_path[:-1]:
+                    if key not in current:
+                        current[key] = {}
+                    current = current[key]
+                # Set final value
+                current[config_path[-1]] = value
+
+        # If DeepSeek API is detected, use requests provider
+        if "DEEPSEEK_API_KEY" in os.environ or "DEEPSEEK_BASE_URL" in os.environ:
+            env_vars.setdefault("llm", {})["provider"] = "requests"
+
+        return env_vars if env_vars else None
+
     def _load_user_global_config(self) -> Optional[Dict[str, Any]]:
         """
-        Load user global config from ~/.claude/settings.json.
+        Load user global config from ~/.my-claude/settings.json.
 
         Returns:
             Config dict or None if not found
@@ -98,7 +148,7 @@ class ConfigLoader:
 
     def _load_project_shared_config(self) -> Optional[Dict[str, Any]]:
         """
-        Load project shared config from .claude/settings.json.
+        Load project shared config from .my-claude/settings.json.
 
         Returns:
             Config dict or None if not found
@@ -111,7 +161,7 @@ class ConfigLoader:
 
     def _load_project_local_config(self) -> Optional[Dict[str, Any]]:
         """
-        Load project local config from .claude/settings.local.json.
+        Load project local config from .my-claude/settings.local.json.
 
         Returns:
             Config dict or None if not found
