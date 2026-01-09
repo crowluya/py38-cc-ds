@@ -210,3 +210,99 @@ def test_invalid_json_ignored(temp_project_dir: str) -> None:
 
     # Should fall back to defaults
     assert settings.llm.provider == "openai"
+
+
+class TestEnvironmentVariables:
+    """环境变量配置测试"""
+
+    def test_openrouter_api_key(self, temp_project_dir: str, monkeypatch) -> None:
+        """验证 OPENROUTER_API_KEY 环境变量"""
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test-key")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        assert settings.llm.provider == "requests"
+        assert settings.llm.api_key == "sk-or-test-key"
+        assert settings.llm.api_base == "https://openrouter.ai/api/v1"
+
+    def test_openrouter_with_custom_model(self, temp_project_dir: str, monkeypatch) -> None:
+        """验证 OPENROUTER_API_KEY 和 OPENROUTER_MODEL 环境变量"""
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test-key")
+        monkeypatch.setenv("OPENROUTER_MODEL", "deepseek/deepseek-r1:70b")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        assert settings.llm.provider == "requests"
+        assert settings.llm.api_key == "sk-or-test-key"
+        assert settings.llm.model == "deepseek/deepseek-r1:70b"
+
+    def test_openrouter_with_custom_base_url(self, temp_project_dir: str, monkeypatch) -> None:
+        """验证自定义 OPENROUTER_BASE_URL"""
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test-key")
+        monkeypatch.setenv("OPENROUTER_BASE_URL", "https://custom.openrouter.ai/v1")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        assert settings.llm.provider == "requests"
+        assert settings.llm.api_base == "https://custom.openrouter.ai/v1"
+
+    def test_deepseek_env_vars(self, temp_project_dir: str, monkeypatch) -> None:
+        """验证 DEEPSEEK_* 环境变量"""
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-deepseek-test")
+        monkeypatch.setenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+        monkeypatch.setenv("DEEPSEEK_MODEL", "deepseek-chat")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        assert settings.llm.provider == "requests"
+        assert settings.llm.api_key == "sk-deepseek-test"
+        assert settings.llm.api_base == "https://api.deepseek.com/v1"
+        assert settings.llm.model == "deepseek-chat"
+
+    def test_openai_env_vars(self, temp_project_dir: str, monkeypatch) -> None:
+        """验证 OPENAI_* 环境变量"""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-test")
+        monkeypatch.setenv("OPENAI_MODEL", "gpt-4")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        assert settings.llm.provider == "openai"
+        assert settings.llm.api_key == "sk-openai-test"
+        assert settings.llm.model == "gpt-4"
+
+    def test_env_vars_override_config_files(self, temp_project_dir: str, monkeypatch) -> None:
+        """验证环境变量覆盖配置文件"""
+        claude_dir = Path(temp_project_dir) / ".my-claude"
+        claude_dir.mkdir(parents=True)
+
+        # Create config file
+        with open(claude_dir / "settings.json", "w", encoding="utf-8") as f:
+            json.dump({"llm": {"model": "gpt-4"}}, f)
+
+        # Set env var to override
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
+        monkeypatch.setenv("OPENROUTER_MODEL", "deepseek/deepseek-r1:70b")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        # Env var should win
+        assert settings.llm.model == "deepseek/deepseek-r1:70b"
+
+    def test_provider_priority_openrouter_first(self, temp_project_dir: str, monkeypatch) -> None:
+        """验证 provider 优先级: OpenRouter > DeepSeek > OpenAI"""
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-deepseek-test")
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-test")
+
+        loader = ConfigLoader(project_root=temp_project_dir)
+        settings = loader.load()
+
+        # OpenRouter should win
+        assert settings.llm.provider == "requests"
+        assert settings.llm.api_key == "sk-or-test"

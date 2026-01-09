@@ -100,16 +100,63 @@ class ConfigLoader:
         """
         Load config from environment variables.
 
+        Provider detection priority:
+        1. OPENROUTER_API_KEY → requests provider
+        2. DEEPSEEK_API_KEY → requests provider
+        3. OPENAI_API_KEY → openai provider
+
         Returns:
             Config dict or None if no env vars set
         """
         env_vars: Dict[str, Any] = {}
 
-        # Map environment variables to config paths
-        env_mappings = {
-            "DEEPSEEK_API_KEY": ("llm", "api_key"),
-            "DEEPSEEK_BASE_URL": ("llm", "api_base"),
-            "DEEPSEEK_MODEL": ("llm", "model"),
+        # First, detect which provider to use (priority order)
+        provider_configs = []
+
+        # Check for OpenRouter
+        if "OPENROUTER_API_KEY" in os.environ:
+            provider_configs.append({
+                "name": "openrouter",
+                "provider": "requests",
+                "api_key": os.environ.get("OPENROUTER_API_KEY"),
+                "api_base": os.environ.get("OPENROUTER_BASE_URL") or os.environ.get("OPENAI_BASE_URL") or "https://openrouter.ai/api/v1",
+                "model": os.environ.get("OPENROUTER_MODEL") or os.environ.get("DEEPSEEK_MODEL") or os.environ.get("OPENAI_MODEL") or "deepseek/deepseek-r1:70b",
+            })
+
+        # Check for DeepSeek
+        if "DEEPSEEK_API_KEY" in os.environ or "DEEPSEEK_BASE_URL" in os.environ:
+            provider_configs.append({
+                "name": "deepseek",
+                "provider": "requests",
+                "api_key": os.environ.get("DEEPSEEK_API_KEY"),
+                "api_base": os.environ.get("DEEPSEEK_BASE_URL") or os.environ.get("OPENAI_BASE_URL"),
+                "model": os.environ.get("DEEPSEEK_MODEL") or os.environ.get("OPENAI_MODEL"),
+            })
+
+        # Check for OpenAI
+        if "OPENAI_API_KEY" in os.environ:
+            provider_configs.append({
+                "name": "openai",
+                "provider": "openai",
+                "api_key": os.environ.get("OPENAI_API_KEY"),
+                "api_base": os.environ.get("OPENAI_BASE_URL"),
+                "model": os.environ.get("OPENAI_MODEL"),
+            })
+
+        # Use the first (highest priority) provider config
+        if provider_configs:
+            config = provider_configs[0]
+            env_vars["llm"] = {
+                "provider": config["provider"],
+                "api_key": config["api_key"],
+            }
+            if config["api_base"]:
+                env_vars["llm"]["api_base"] = config["api_base"]
+            if config["model"]:
+                env_vars["llm"]["model"] = config["model"]
+
+        # Map other environment variables (non-provider specific)
+        other_mappings = {
             "DEFAULT_PERMISSION_MODE": ("permissions", "default_mode"),
             "LOG_LEVEL": ("log_level",),
             "VERIFY_SSL": ("llm", "verify_ssl"),
@@ -118,7 +165,7 @@ class ConfigLoader:
             "TEMPERATURE": ("llm", "temperature"),
         }
 
-        for env_var, config_path in env_mappings.items():
+        for env_var, config_path in other_mappings.items():
             value = os.environ.get(env_var)
             if value is not None:
                 # Navigate nested dict path
@@ -129,10 +176,6 @@ class ConfigLoader:
                     current = current[key]
                 # Set final value
                 current[config_path[-1]] = value
-
-        # If DeepSeek API is detected, use requests provider
-        if "DEEPSEEK_API_KEY" in os.environ or "DEEPSEEK_BASE_URL" in os.environ:
-            env_vars.setdefault("llm", {})["provider"] = "requests"
 
         return env_vars if env_vars else None
 
