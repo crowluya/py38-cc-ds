@@ -124,7 +124,7 @@
 
 | 任务 | 状态 | 测试命令 |
 |------|------|---------|
-| T100: Windows 7 兼容性 | 🔄 | 需要 Win7 环境 |
+| T100: Windows 7 兼容性 | ⚠️ | Win10/11 已复测通过；仍需要 Win7 环境复测 |
 | T101: DeepSeek 配置说明 | ✅ | `.env.example` 和 `CONFIGURATION.md` |
 | T102: README | ✅ | 已完成 |
 
@@ -206,20 +206,44 @@
 
 ---
 
+## Windows 复测记录 (2026-01-09)
+
+### Windows 本地/单元测试 ✅
+
+- `pytest`：`640 passed`
+
+### Windows 集成测试（DeepSeek 配置来自 `.env.local`）✅
+
+- 基本对话：`claude-code print "你好" -o text`
+- JSON 输出：`claude-code print "1+1=?" -o json`
+- 流式 JSON：`claude-code print "写诗" -o stream-json`
+- 文件注入：`claude-code print "@test.txt 内容" -o text`
+- 目录注入：`claude-code print "@test_dir/ 列出" -o text`
+- 命令执行（Windows）：`claude-code print "!echo hello" -o text`
+
+备注：Win7 环境仍待复测。
+
+---
+
 ## 测试命令速查
 
 ```bash
 # 基础测试
-python3 claude_code/cli/main.py print "test" -o text
-python3 claude_code/cli/main.py print "test" -o json
-python3 claude_code/cli/main.py print "test" -o stream-json
+python -m claude_code.cli.main print "test" -o text
+python -m claude_code.cli.main print "test" -o json
+python -m claude_code.cli.main print "test" -o stream-json
 
 # 上下文注入测试
-python3 claude_code/cli/main.py print "@test.txt 内容" -o text
-python3 claude_code/cli/main.py print "@test_dir/ 列出" -o text
-python3 claude_code/cli/main.py print "!ls -la 列出" -o text
+python -m claude_code.cli.main print "@test.txt 内容" -o text
+python -m claude_code.cli.main print "@test_dir/ 列出" -o text
+
+# Windows 命令执行注入（示例）
+python -m claude_code.cli.main print "!echo hello" -o text
+
+# macOS/Linux 命令执行注入（示例）
+python -m claude_code.cli.main print "!ls -la 列出" -o text
 
 # 单元测试
-python3 -m pytest tests/ -v
-python3 -m pytest tests/test_loader.py -v
+python -m pytest tests/ -v
+python -m pytest tests/test_loader.py -v
 ```

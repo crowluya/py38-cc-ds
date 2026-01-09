@@ -8,7 +8,7 @@ Windows 7 + Internal Network (DeepSeek R1 70B)
 from typing import Any, Callable, List, Optional, TypeVar
 
 import colorama
-from questionary import Choice, Form, confirm, select
+from questionary import Choice, Form, select
 
 # Initialize colorama for Windows 7 ANSI support
 colorama.init()
@@ -49,7 +49,9 @@ class Approval:
             True if user confirms, False otherwise
         """
         try:
-            result = confirm(message, default=default).ask()
+            import questionary
+
+            result = questionary.confirm(message, default=default).ask()
             return result if result is not None else default
         except Exception:
             # Fallback to default on error

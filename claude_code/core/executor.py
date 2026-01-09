@@ -253,6 +253,23 @@ class CommandExecutor:
         Returns:
             Tuple of (shell_executable, full_command_args)
         """
+        # NOTE:
+        # On Windows, we execute commands via cmd.exe instead of PowerShell.
+        # Reasons:
+        # - cmd.exe expands %ENV_VAR% (tests rely on this)
+        # - Passing args like: python.exe -c "print('x')" works reliably
+        # - PowerShell has different quoting and env expansion semantics
+        if sys.platform == "win32":
+            shell_cmd = "cmd"
+            shell_prefix = ["cmd", "/d", "/s", "/c"]
+
+            if not args:
+                full_command = command
+            else:
+                full_command = subprocess.list2cmdline([command, *args])
+
+            return shell_cmd, shell_prefix + [full_command]
+
         shell_cmd, shell_prefix = self._get_shell_command()
 
         # If no additional args, treat command as the full command string
