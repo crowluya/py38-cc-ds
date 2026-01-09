@@ -66,9 +66,9 @@
 
 ### 3. 配置系统
 - [ ] 分层配置加载器（`config/loader.py`）
-  - [ ] 用户全局配置（`~/.claude/settings.json`）
-  - [ ] 项目共享配置（`.claude/settings.json`）
-  - [ ] 项目本地配置（`.claude/settings.local.json`）
+  - [ ] 用户全局配置（`~/.pycc/settings.json`）
+  - [ ] 项目共享配置（`.pycc/settings.json`）
+  - [ ] 项目本地配置（`.pycc/settings.local.json`）
   - [ ] CLI 参数覆盖
   - [ ] 配置合并优先级实现
 - [ ] `settings.json` 解析
@@ -208,8 +208,8 @@
 ### 9. Slash Commands
 - [ ] 命令管理器（`interaction/commands.py`）
   - [ ] 命令发现
-    - [ ] 项目级命令（`.claude/commands/`）
-    - [ ] 用户级命令（`~/.claude/commands/`）
+    - [ ] 项目级命令（`.pycc/commands/`）
+    - [ ] 用户级命令（`~/.pycc/commands/`）
     - [ ] 命令扫描与索引
   - [ ] 参数解析
     - [ ] `$ARGUMENTS` 全部参数捕获
@@ -364,8 +364,8 @@
 ### 17. Skills 系统
 - [ ] Skills 管理器（`extensions/skills.py`）
   - [ ] Skill 发现与加载
-    - [ ] 项目级 Skills（`.claude/skills/`）
-    - [ ] 用户级 Skills（`~/.claude/skills/`）
+    - [ ] 项目级 Skills（`.pycc/skills/`）
+    - [ ] 用户级 Skills（`~/.pycc/skills/`）
     - [ ] `SKILL.md` 文件解析
   - [ ] 渐进式披露（元数据索引）
     - [ ] Level 1：元数据索引（description）
@@ -379,8 +379,8 @@
 ### 18. Subagents 基础
 - [ ] Subagents 管理器（`extensions/subagents.py`）
   - [ ] Subagent 定义与发现
-    - [ ] 项目级 Subagents（`.claude/agents/`）
-    - [ ] 用户级 Subagents（`~/.claude/agents/`）
+    - [ ] 项目级 Subagents（`.pycc/agents/`）
+    - [ ] 用户级 Subagents（`~/.pycc/agents/`）
     - [ ] `.md` 文件解析（YAML Frontmatter）
   - [ ] 独立上下文管理
     - [ ] 上下文隔离

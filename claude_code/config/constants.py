@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 # Application name (used for directory naming)
-APP_NAME = "my-claude"
+APP_NAME = "pycc"
 
 # Directory names (relative to home or project root)
 _USER_CONFIG_DIR = f".{APP_NAME}"
@@ -29,7 +29,7 @@ def get_user_config_dir() -> Path:
     Get user config directory path.
 
     Returns:
-        Path to ~/.my-claude
+        Path to ~/.pycc
     """
     return Path.home() / _USER_CONFIG_DIR
 
@@ -42,7 +42,7 @@ def get_project_config_dir(project_root: Optional[Path] = None) -> Path:
         project_root: Project root directory. If None, uses current directory.
 
     Returns:
-        Path to .my-claude in project
+        Path to .pycc in project
     """
     if project_root is None:
         project_root = Path.cwd()
@@ -50,27 +50,27 @@ def get_project_config_dir(project_root: Optional[Path] = None) -> Path:
 
 
 def get_user_commands_dir() -> Path:
-    """Get user commands directory path (~/.my-claude/commands)."""
+    """Get user commands directory path (~/.pycc/commands)."""
     return get_user_config_dir() / COMMANDS_DIR
 
 
 def get_user_hooks_dir() -> Path:
-    """Get user hooks directory path (~/.my-claude/hooks)."""
+    """Get user hooks directory path (~/.pycc/hooks)."""
     return get_user_config_dir() / HOOKS_DIR
 
 
 def get_project_commands_dir(project_root: Optional[Path] = None) -> Path:
-    """Get project commands directory path (.my-claude/commands)."""
+    """Get project commands directory path (.pycc/commands)."""
     return get_project_config_dir(project_root) / COMMANDS_DIR
 
 
 def get_project_hooks_dir(project_root: Optional[Path] = None) -> Path:
-    """Get project hooks directory path (.my-claude/hooks)."""
+    """Get project hooks directory path (.pycc/hooks)."""
     return get_project_config_dir(project_root) / HOOKS_DIR
 
 
 def get_project_checkpoints_dir(project_root: Optional[Path] = None) -> Path:
-    """Get project checkpoints directory path (.my-claude/checkpoints)."""
+    """Get project checkpoints directory path (.pycc/checkpoints)."""
     return get_project_config_dir(project_root) / CHECKPOINTS_DIR
 
 

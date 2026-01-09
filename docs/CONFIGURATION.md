@@ -44,9 +44,11 @@ cp .env.example .env
 配置按以下优先级加载（高到低）：
 
 1. **CLI 参数** - 最高优先级
-2. `.claude/settings.local.json` - 项目本地配置
-3. `.claude/settings.json` - 项目共享配置
-4. `~/.claude/settings.json` - 用户全局配置
+2. `.pycc/settings.local.json` - 项目本地配置
+3. `.pycc/settings.json` - 项目共享配置
+4. `~/.pycc/settings.json` - 用户全局配置
+
+说明：本仓库的 `.claude/` 目录用于外部工具（例如 Claude Code IDE 集成）的配置，不由本 Python 项目读取。
 
 ### 配置文件结构
 
@@ -69,7 +71,7 @@ cp .env.example .env
   },
   "hooks": {
     "enabled": true,
-    "directory": ".claude/hooks"
+    "directory": ".pycc/hooks"
   },
   "output": {
     "format": "text",
@@ -100,7 +102,7 @@ export DEEPSEEK_BASE_URL="https://api.deepseek.com/v1"
 
 #### 方式二：配置文件
 
-创建 `~/.claude/settings.json`：
+创建 `~/.pycc/settings.json`：
 
 ```json
 {
@@ -133,7 +135,7 @@ export DEEPSEEK_BASE_URL="https://api.deepseek.com/v1"
 
 ### 权限规则
 
-在 `.claude/settings.json` 中配置权限规则：
+在 `.pycc/settings.json` 中配置权限规则：
 
 ```json
 {

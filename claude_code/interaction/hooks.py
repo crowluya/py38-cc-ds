@@ -9,7 +9,7 @@ Handles:
 - Hook matching (by event type, tool name, pattern)
 - Hook script execution
 - Hook registration and dispatch
-- Loading hooks from .claude/hooks/ directory
+- Loading hooks from .pycc/hooks/ directory
 """
 
 import yaml
@@ -153,7 +153,7 @@ class HookScript:
     A hook script that can be executed on events.
 
     Hooks are Python scripts that receive JSON context via stdin.
-    They can be loaded from .claude/hooks/ or added programmatically.
+    They can be loaded from .pycc/hooks/ or added programmatically.
     """
 
     name: str
@@ -386,8 +386,8 @@ def create_default_manager() -> HookManager:
     Create a HookManager with default directories.
 
     Uses:
-    - Project: .claude/hooks/
-    - User: ~/.claude/hooks/
+    - Project: .pycc/hooks/
+    - User: ~/.pycc/hooks/
 
     Returns:
         Configured HookManager

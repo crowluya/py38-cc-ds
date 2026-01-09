@@ -23,7 +23,7 @@ VERSION = "0.1.0"
 
 def _find_project_root() -> Optional[str]:
     """
-    Find project root by looking for .env, .env.local, or .my-claude directory.
+    Find project root by looking for .env, .env.local, or .pycc directory.
 
     Searches upward from current directory until finding a project marker.
 
@@ -39,7 +39,7 @@ def _find_project_root() -> Optional[str]:
             return str(path)
         if (path / ".env").exists():
             return str(path)
-        if (path / ".my-claude").exists():
+        if (path / ".pycc").exists():
             return str(path)
         if (path / "pyproject.toml").exists():
             return str(path)

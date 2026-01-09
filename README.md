@@ -64,7 +64,7 @@ pip install -e .
 
 ### 1. DeepSeek LLM Configuration
 
-Create or edit `~/.claude/settings.json`:
+Create or edit `~/.pycc/settings.json`:
 
 ```json
 {
@@ -86,7 +86,7 @@ export DEEPSEEK_BASE_URL="https://your-deepseek-endpoint.com/v1"
 
 ### 2. Project Configuration
 
-Create `.claude/settings.json` in your project directory:
+Create `.pycc/settings.json` in your project directory:
 
 ```json
 {
@@ -105,9 +105,11 @@ Create `.claude/settings.json` in your project directory:
 ### Configuration Priority (highest to lowest)
 
 1. CLI arguments
-2. Project local: `.claude/settings.local.json`
-3. Project shared: `.claude/settings.json`
-4. User global: `~/.claude/settings.json`
+2. Project local: `.pycc/settings.local.json`
+3. Project shared: `.pycc/settings.json`
+4. User global: `~/.pycc/settings.json`
+
+Note: `.claude/` in this repository is used by external tools (e.g., Claude Code IDE integrations) and is not read by this Python project.
 
 ## Usage
 
@@ -140,7 +142,7 @@ claude-code --model deepseek-r1-70b
 ### Command Execution Examples
 
 ```bash
-# Execute shell commands (PowerShell on Win7, bash on Unix)
+# Execute shell commands (cmd.exe on Windows, bash on Unix)
 ! git status
 ! pytest tests/test_agent.py -v
 
@@ -166,7 +168,7 @@ claude-code --model deepseek-r1-70b
 
 #### Creating Custom Slash Commands
 
-Create `.claude/commands/code_review.md`:
+Create `.pycc/commands/code_review.md`:
 
 ```markdown
 ---
@@ -260,10 +262,10 @@ black claude_code/
 ### Path Handling
 - Always use `pathlib.Path` for cross-platform paths
 - Never hardcode `/` or `\` separators
-- User home directory: `pathlib.Path.home()` or `~/.claude/`
+- User home directory: `pathlib.Path.home()` or `~/.pycc/`
 
 ### Command Execution
-- Windows 7: Uses PowerShell (`powershell.exe -Command`)
+- Windows: Uses cmd.exe (`cmd.exe /c`)
 - Unix: Uses bash (`/bin/bash -c`)
 - All commands capture UTF-8 output
 

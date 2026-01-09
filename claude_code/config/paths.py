@@ -83,7 +83,7 @@ def get_config_directory() -> str:
     Get Claude Code configuration directory.
 
     Returns:
-        Config directory path (~/.my-claude)
+        Config directory path (~/.pycc)
     """
     home = get_home_directory()
     return str(Path(home) / USER_CONFIG_DIR)
@@ -189,7 +189,7 @@ class PathResolver:
 
 def get_project_root() -> Optional[str]:
     """
-    Detect project root directory by looking for .my-claude directory.
+    Detect project root directory by looking for .pycc directory.
 
     Returns:
         Project root path or None if not found

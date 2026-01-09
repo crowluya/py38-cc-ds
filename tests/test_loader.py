@@ -49,7 +49,7 @@ def test_load_default_settings(temp_project_dir: str) -> None:
 def test_load_user_global_config(temp_project_dir: str) -> None:
     """验证加载用户全局配置"""
     # Create user global config
-    user_config_dir = Path.home() / ".my-claude"
+    user_config_dir = Path.home() / ".pycc"
     user_config_dir.mkdir(exist_ok=True)
     config_path = user_config_dir / "settings.json"
 
@@ -74,8 +74,8 @@ def test_load_user_global_config(temp_project_dir: str) -> None:
 
 def test_load_project_shared_config(temp_project_dir: str) -> None:
     """验证加载项目共享配置"""
-    # Create .my-claude directory and settings.json
-    claude_dir = Path(temp_project_dir) / ".my-claude"
+    # Create .pycc directory and settings.json
+    claude_dir = Path(temp_project_dir) / ".pycc"
     claude_dir.mkdir(parents=True)
     config_path = claude_dir / "settings.json"
 
@@ -95,8 +95,8 @@ def test_load_project_shared_config(temp_project_dir: str) -> None:
 
 def test_load_project_local_config(temp_project_dir: str) -> None:
     """验证加载项目本地配置（.local.json）"""
-    # Create .my-claude directory and settings.local.json
-    claude_dir = Path(temp_project_dir) / ".my-claude"
+    # Create .pycc directory and settings.local.json
+    claude_dir = Path(temp_project_dir) / ".pycc"
     claude_dir.mkdir(parents=True)
     config_path = claude_dir / "settings.local.json"
 
@@ -116,7 +116,7 @@ def test_load_project_local_config(temp_project_dir: str) -> None:
 
 def test_config_priority_order(temp_project_dir: str) -> None:
     """验证配置优先级顺序"""
-    claude_dir = Path(temp_project_dir) / ".my-claude"
+    claude_dir = Path(temp_project_dir) / ".pycc"
     claude_dir.mkdir(parents=True)
 
     # Create all three config files with conflicting values
@@ -138,7 +138,7 @@ def test_config_priority_order(temp_project_dir: str) -> None:
 
 def test_config_priority_without_cli(temp_project_dir: str) -> None:
     """验证配置优先级（无 CLI 覆盖）"""
-    claude_dir = Path(temp_project_dir) / ".my-claude"
+    claude_dir = Path(temp_project_dir) / ".pycc"
     claude_dir.mkdir(parents=True)
 
     # settings.local.json should override settings.json
@@ -157,7 +157,7 @@ def test_config_priority_without_cli(temp_project_dir: str) -> None:
 
 def test_merge_nested_dicts(temp_project_dir: str) -> None:
     """验证嵌套字典合并"""
-    claude_dir = Path(temp_project_dir) / ".my-claude"
+    claude_dir = Path(temp_project_dir) / ".pycc"
     claude_dir.mkdir(parents=True)
 
     # Shared config with some llm settings
@@ -198,7 +198,7 @@ def test_load_settings_convenience(temp_project_dir: str) -> None:
 
 def test_invalid_json_ignored(temp_project_dir: str) -> None:
     """验证无效 JSON 被忽略"""
-    claude_dir = Path(temp_project_dir) / ".my-claude"
+    claude_dir = Path(temp_project_dir) / ".pycc"
     claude_dir.mkdir(parents=True)
 
     # Write invalid JSON
@@ -277,7 +277,7 @@ class TestEnvironmentVariables:
 
     def test_env_vars_override_config_files(self, temp_project_dir: str, monkeypatch) -> None:
         """验证环境变量覆盖配置文件"""
-        claude_dir = Path(temp_project_dir) / ".my-claude"
+        claude_dir = Path(temp_project_dir) / ".pycc"
         claude_dir.mkdir(parents=True)
 
         # Create config file

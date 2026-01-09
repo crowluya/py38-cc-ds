@@ -66,7 +66,7 @@ def test_get_config_directory() -> None:
     config_dir = get_config_directory()
 
     assert config_dir is not None
-    assert ".my-claude" in config_dir or "_my-claude" in config_dir.lower()
+    assert ".pycc" in config_dir or "_pycc" in config_dir.lower()
 
 
 def test_ensure_directory(temp_path: str) -> None:
@@ -177,8 +177,8 @@ def test_path_resolver_set_base_dir() -> None:
 
 
 def test_get_project_root_with_claude_dir() -> None:
-    """验证检测项目根目录（存在 .my-claude 目录）"""
-    # Current directory should have .my-claude (it's where the test runs)
+    """验证检测项目根目录（存在 .pycc 目录）"""
+    # Current directory may have .pycc (it's where the test runs)
     root = get_project_root()
 
     # May return None if not in a project, but shouldn't crash

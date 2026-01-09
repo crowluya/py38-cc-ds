@@ -169,7 +169,7 @@ class CheckpointManager:
 
         Args:
             checkpoint_dir: Directory to store checkpoints (optional)
-            project_path: Project path, uses .my-claude/checkpoints if provided (optional)
+            project_path: Project path, uses .pycc/checkpoints if provided (optional)
 
         Raises:
             ValueError: If neither checkpoint_dir nor project_path is provided

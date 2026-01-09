@@ -267,7 +267,7 @@ class ConfigLoader:
 
     def _load_user_global_config(self) -> Optional[Dict[str, Any]]:
         """
-        Load user global config from ~/.my-claude/settings.json.
+        Load user global config from ~/.pycc/settings.json.
 
         Returns:
             Config dict or None if not found
@@ -277,7 +277,7 @@ class ConfigLoader:
 
     def _load_project_shared_config(self) -> Optional[Dict[str, Any]]:
         """
-        Load project shared config from .my-claude/settings.json.
+        Load project shared config from .pycc/settings.json.
 
         Returns:
             Config dict or None if not found
@@ -290,7 +290,7 @@ class ConfigLoader:
 
     def _load_project_local_config(self) -> Optional[Dict[str, Any]]:
         """
-        Load project local config from .my-claude/settings.local.json.
+        Load project local config from .pycc/settings.local.json.
 
         Returns:
             Config dict or None if not found
@@ -390,7 +390,7 @@ def _find_project_root_auto() -> Optional[str]:
             return str(path)
         if (path / ".env").exists():
             return str(path)
-        if (path / ".my-claude").exists():
+        if (path / ".pycc").exists():
             return str(path)
         if (path / "pyproject.toml").exists():
             return str(path)

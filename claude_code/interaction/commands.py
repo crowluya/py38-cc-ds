@@ -67,7 +67,7 @@ class SlashCommand:
     """
     A custom slash command.
 
-    Commands are stored as text files in `.my-claude/commands/` or `~/.my-claude/commands/`.
+    Commands are stored as text files in `.pycc/commands/` or `~/.pycc/commands/`.
     Each file contains a template with optional YAML frontmatter.
     """
 
@@ -242,7 +242,7 @@ class SlashCommandManager:
         Project commands take precedence over user commands.
 
         Args:
-            project_dir: Project directory (contains .my-claude/commands/)
+            project_dir: Project directory (contains .pycc/commands/)
             user_dir: User directory (contains commands/)
         """
         # First load user commands
@@ -367,8 +367,8 @@ def create_default_manager() -> SlashCommandManager:
     Create a SlashCommandManager with default directories.
 
     Uses:
-    - Project: .my-claude/commands/
-    - User: ~/.my-claude/commands/
+    - Project: .pycc/commands/
+    - User: ~/.pycc/commands/
 
     Returns:
         Configured SlashCommandManager
