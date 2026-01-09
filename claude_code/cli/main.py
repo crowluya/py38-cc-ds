@@ -13,7 +13,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 import click
 
@@ -1246,6 +1246,33 @@ def _run_prompt_toolkit_chat(
         def _work() -> List[dict]:
             if use_auto:
                 _LOGGER.info("auto_start mode=%s max_steps=%s", mode.get("value"), int(auto_max_steps))
+
+                def _approval_cb(message: str) -> bool:
+                    import threading
+
+                    approval = get_approval()
+                    flag = {"value": False}
+                    evt = threading.Event()
+
+                    def _run() -> None:
+                        try:
+                            flag["value"] = bool(approval.confirm(message, default=False))
+                        finally:
+                            evt.set()
+
+                    def _request() -> None:
+                        try:
+                            app.run_in_terminal(_run)
+                        except Exception:
+                            _run()
+
+                    try:
+                        app.call_from_executor(_request)
+                    except Exception:
+                        _request()
+                    evt.wait()
+                    return bool(flag["value"])
+
                 return _process_input_auto_collect(
                     agent=agent,
                     user_input=line,
@@ -1254,6 +1281,7 @@ def _run_prompt_toolkit_chat(
                     permission_manager=permission_manager,
                     mode=mode["value"],
                     max_steps=auto_max_steps,
+                    approval_callback=_approval_cb,
                 )
             turn = agent.process(line)
             return [{"type": "assistant", "ok": True, "content": getattr(turn, "content", "") or ""}]
@@ -1456,6 +1484,7 @@ def _process_input_auto_collect(
     permission_manager: Optional[object],
     mode: str = "default",
     max_steps: int = 20,
+    approval_callback: Optional[Callable[[str], bool]] = None,
 ) -> List[dict]:
     """Run auto loop but return the last step results for UI rendering."""
     # This reuses the same core logic as _process_input_auto, but without printing.
@@ -1481,7 +1510,9 @@ def _process_input_auto_collect(
         "bypass": {"mkdir", "read_file", "read_dir", "write_file", "gen_file", "run", "done"},
     }
 
-    def _check(domain: PermissionDomain, target: str) -> bool:
+    approval = get_approval()
+
+    def _check(domain: PermissionDomain, target: str, ask_message: str) -> bool:
         if mode_norm == "bypass" or auto_approve:
             try:
                 _LOGGER.info(
@@ -1504,7 +1535,18 @@ def _process_input_auto_collect(
                 )
             except Exception:
                 pass
-            return False
+            try:
+                ok = bool(approval.confirm(ask_message, default=False))
+                _LOGGER.info(
+                    "perm_check mode=%s domain=%s target=%s decision=%s reason=no_permission_manager",
+                    mode_norm,
+                    getattr(domain, "value", str(domain)),
+                    target,
+                    "ALLOW" if ok else "DENY",
+                )
+                return ok
+            except Exception:
+                return False
         res = permission_manager.check_permission(domain, target)
         try:
             rule = getattr(res, "matching_rule", None)
@@ -1521,6 +1563,38 @@ def _process_input_auto_collect(
             pass
         if res.status == PermissionStatus.GRANTED:
             return True
+        if res.status == PermissionStatus.PENDING:
+            try:
+                _LOGGER.info(
+                    "perm_check mode=%s domain=%s target=%s decision=ASK prompt=%s",
+                    mode_norm,
+                    getattr(domain, "value", str(domain)),
+                    target,
+                    ask_message,
+                )
+            except Exception:
+                pass
+
+            try:
+                if approval_callback is not None:
+                    ok = bool(approval_callback(ask_message))
+                else:
+                    ok = bool(approval.confirm(ask_message, default=False))
+            except Exception:
+                ok = False
+
+            try:
+                _LOGGER.info(
+                    "perm_check mode=%s domain=%s target=%s decision=%s reason=ask_user",
+                    mode_norm,
+                    getattr(domain, "value", str(domain)),
+                    target,
+                    "ALLOW" if ok else "DENY",
+                )
+            except Exception:
+                pass
+            return ok
+
         return False
 
     def _execute_action(action: dict) -> dict:
@@ -1561,7 +1635,7 @@ def _process_input_auto_collect(
             path_arg = str(action.get("path", "")).strip()
             if not path_arg:
                 return {"type": "mkdir", "ok": False, "error": "mkdir requires path"}
-            if not _check(PermissionDomain.FILE_WRITE, path_arg):
+            if not _check(PermissionDomain.FILE_WRITE, path_arg, f"Write directory: {path_arg}"):
                 return {"type": "mkdir", "path": path_arg, "ok": False, "error": "permission denied"}
             target = _resolve_under_root(project_root, path_arg)
             Path(target).mkdir(parents=True, exist_ok=True)
@@ -1576,7 +1650,7 @@ def _process_input_auto_collect(
             path_arg = str(action.get("path", "")).strip()
             if not path_arg:
                 return {"type": "read_file", "ok": False, "error": "read_file requires path"}
-            if not _check(PermissionDomain.FILE_READ, path_arg):
+            if not _check(PermissionDomain.FILE_READ, path_arg, f"Read file: {path_arg}"):
                 return {"type": "read_file", "path": path_arg, "ok": False, "error": "permission denied"}
             target = _resolve_under_root(project_root, path_arg)
             p = Path(target)
@@ -1603,7 +1677,7 @@ def _process_input_auto_collect(
             max_entries = int(action.get("max_entries", 200))
             if max_entries < 1:
                 max_entries = 1
-            if not _check(PermissionDomain.FILE_READ, path_arg):
+            if not _check(PermissionDomain.FILE_READ, path_arg, f"Read directory: {path_arg}"):
                 return {"type": "read_dir", "path": path_arg, "ok": False, "error": "permission denied"}
             target = _resolve_under_root(project_root, path_arg)
             listing = _format_dir_listing(target, recursive=recursive, max_entries=max_entries)
@@ -1629,7 +1703,7 @@ def _process_input_auto_collect(
                 norm = path_arg.replace("\\", "/")
                 if norm not in allowed_write_paths["plan"]:
                     return {"type": "write_file", "path": path_arg, "ok": False, "error": "plan mode: write restricted"}
-            if not _check(PermissionDomain.FILE_WRITE, path_arg):
+            if not _check(PermissionDomain.FILE_WRITE, path_arg, f"Write file: {path_arg}"):
                 return {"type": "write_file", "path": path_arg, "ok": False, "error": "permission denied"}
             target = _resolve_under_root(project_root, path_arg)
             safe_write_text(target, content, overwrite=overwrite)
@@ -1660,7 +1734,7 @@ def _process_input_auto_collect(
                 norm = path_arg.replace("\\", "/")
                 if norm not in allowed_write_paths["plan"]:
                     return {"type": "gen_file", "path": path_arg, "ok": False, "error": "plan mode: write restricted"}
-            if not _check(PermissionDomain.FILE_WRITE, path_arg):
+            if not _check(PermissionDomain.FILE_WRITE, path_arg, f"Generate file: {path_arg}"):
                 return {"type": "gen_file", "path": path_arg, "ok": False, "error": "permission denied"}
             target = _resolve_under_root(project_root, path_arg)
             ft = detect_file_type(target, file_type)
@@ -1695,7 +1769,7 @@ def _process_input_auto_collect(
             command = str(action.get("command", "")).strip()
             if not command:
                 return {"type": "run", "ok": False, "error": "run requires command"}
-            if not _check(PermissionDomain.COMMAND, command):
+            if not _check(PermissionDomain.COMMAND, command, f"Run command: {command}"):
                 return {"type": "run", "command": command, "ok": False, "error": "permission denied"}
             working_dir = str(action.get("working_dir", "")).strip() or project_root
             working_dir_resolved = _resolve_under_root(project_root, working_dir) if working_dir != project_root else project_root
