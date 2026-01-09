@@ -277,6 +277,7 @@ def _handle_headless_mode(
             max_tokens=settings.llm.max_tokens,
             temperature=settings.llm.temperature,
             stream=json_stream_output,  # Enable streaming for --json-stream
+            project_root=project_root,  # T051: Enable auto-load of long-term memory
         )
         agent = Agent(agent_config)
     except Exception as e:

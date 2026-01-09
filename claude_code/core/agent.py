@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from claude_code.core.context import ContextManager, LoadError
+from claude_code.core.context import ContextManager, LoadError, LongTermMemory
 from claude_code.core.executor import CommandExecutor
 
 
@@ -376,6 +376,9 @@ class AgentConfig:
     temperature: float = 0.7
     system_prompt: Optional[str] = None
     stream: bool = False
+    project_root: Optional[str] = None
+    auto_load_memory: bool = True
+    resolve_modular_imports: bool = False
 
 
 class Agent:
@@ -401,6 +404,14 @@ class Agent:
         self._history: List[Message] = []
         self._context_manager = ContextManager()
         self._command_executor = CommandExecutor()
+        self._long_term_memory: Optional[LongTermMemory] = None
+
+        # T051: Auto-load long-term memory files if enabled
+        if config.auto_load_memory and config.project_root:
+            self._load_long_term_memory(
+                config.project_root,
+                resolve_imports=config.resolve_modular_imports
+            )
 
     def process(self, user_input: str) -> ConversationTurn:
         """
@@ -447,6 +458,33 @@ class Agent:
     def get_history(self) -> List[Message]:
         """Get conversation history."""
         return list(self._history)
+
+    def get_long_term_memory(self) -> Optional[LongTermMemory]:
+        """Get loaded long-term memory."""
+        return self._long_term_memory
+
+    def _load_long_term_memory(self, project_root: str, resolve_imports: bool = False) -> None:
+        """
+        Load long-term memory files from project root.
+
+        Args:
+            project_root: Project root directory
+            resolve_imports: Whether to resolve @ import syntax in memory files
+        """
+        try:
+            memory = LongTermMemory()
+            memory.load_from_directory(project_root, resolve_imports=resolve_imports)
+
+            if not memory.is_empty:
+                self._long_term_memory = memory
+
+                # Inject memory into system prompt if available
+                memory_content = memory.get_formatted_content()
+                if memory_content and "No long-term memory files" not in memory_content:
+                    self._add_system_message(memory_content)
+        except Exception:
+            # Silently fail if memory loading fails
+            pass
 
     def _call_llm(self) -> ConversationTurn:
         """
