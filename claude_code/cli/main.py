@@ -9,6 +9,8 @@ import os
 import shlex
 import sys
 import time
+import logging
+from logging.handlers import RotatingFileHandler
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -26,6 +28,66 @@ from claude_code.llm.factory import create_llm_client
 
 # Version constant
 VERSION = "0.1.0"
+
+
+_LOGGER = logging.getLogger("pycc")
+
+
+def _coerce_log_level(level: Optional[str]) -> int:
+    if not level:
+        return logging.INFO
+    s = str(level).strip().upper()
+    if s in ("CRITICAL", "FATAL"):
+        return logging.CRITICAL
+    if s == "ERROR":
+        return logging.ERROR
+    if s in ("WARN", "WARNING"):
+        return logging.WARNING
+    if s == "INFO":
+        return logging.INFO
+    if s == "DEBUG":
+        return logging.DEBUG
+    try:
+        return int(s)
+    except Exception:
+        return logging.INFO
+
+
+def _init_file_logging(project_root: str, level: Optional[str]) -> None:
+    try:
+        root = Path(project_root)
+        log_dir = root / ".pycc"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / "pycc.log"
+
+        lvl = _coerce_log_level(level)
+        logger = _LOGGER
+        logger.setLevel(lvl)
+
+        for h in list(logger.handlers):
+            try:
+                logger.removeHandler(h)
+            except Exception:
+                pass
+
+        handler = RotatingFileHandler(
+            str(log_path),
+            maxBytes=2 * 1024 * 1024,
+            backupCount=3,
+            encoding="utf-8",
+        )
+        handler.setLevel(lvl)
+        formatter = logging.Formatter(
+            fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.propagate = False
+
+        logger.info("logging initialized: level=%s path=%s", logging.getLevelName(lvl), str(log_path))
+    except Exception:
+        pass
 
 
 def _find_project_root() -> Optional[str]:
@@ -69,6 +131,112 @@ def cli(ctx: click.Context) -> None:
     """
     # Context object for sharing state between commands
     ctx.ensure_object(dict)
+
+
+@cli.command(name="print")
+@click.argument("prompt", required=False, default="")
+@click.option(
+    "-m",
+    "--model",
+    default=None,
+    help="LLM model to use",
+)
+@click.option(
+    "-o",
+    "--output-format",
+    "output_format",
+    type=click.Choice(["text", "json", "stream-json"], case_sensitive=False),
+    default="text",
+    show_default=True,
+)
+@click.pass_context
+def print_command(
+    ctx: click.Context,
+    prompt: str,
+    model: Optional[str],
+    output_format: str,
+) -> None:
+    json_output = str(output_format).lower() == "json"
+    json_stream_output = str(output_format).lower() == "stream-json"
+    _handle_headless_mode(
+        ctx,
+        prompt,
+        model,
+        json_output=json_output,
+        json_stream_output=json_stream_output,
+    )
+
+
+@cli.command(name="write-file")
+@click.argument("path")
+@click.argument("instruction")
+@click.option(
+    "--type",
+    "file_type",
+    default=None,
+    help="File type hint for generation (e.g. requirements)",
+)
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    help="Overwrite if target exists",
+)
+@click.option(
+    "-m",
+    "--model",
+    default=None,
+    help="LLM model to use",
+)
+@click.pass_context
+def write_file_command(
+    ctx: click.Context,
+    path: str,
+    instruction: str,
+    file_type: Optional[str],
+    overwrite: bool,
+    model: Optional[str],
+) -> None:
+    project_root = ctx.obj.get("project_root") if ctx.obj else None
+    if project_root is None:
+        project_root = _find_project_root() or os.getcwd()
+
+    settings = load_settings(project_root=project_root)
+    _init_file_logging(
+        project_root or os.getcwd(),
+        getattr(settings, "log_level", None) or os.getenv("LOG_LEVEL"),
+    )
+
+    if model:
+        settings.llm.model = model
+
+    llm_client = create_llm_client(settings)
+    agent_config = AgentConfig(
+        llm_client=llm_client,
+        max_tokens=settings.llm.max_tokens,
+        temperature=settings.llm.temperature,
+        stream=False,
+        project_root=project_root,
+    )
+    agent = Agent(agent_config)
+
+    target_path = str(Path(path))
+    ft = detect_file_type(target_path, file_type)
+
+    def _gen(p: str) -> str:
+        return agent.process(p).content
+
+    content, result = generate_validated(
+        generate_fn=_gen,
+        file_type=ft,
+        target_path=target_path,
+        instruction=instruction,
+        max_attempts=3,
+    )
+    if not result.ok:
+        raise click.Abort()
+
+    safe_write_text(target_path, content, overwrite=overwrite)
+    click.echo(path)
 
 
 @cli.command()
@@ -170,192 +338,17 @@ def chat(
             json_output=json_output,
             json_stream_output=json_stream_output,
         )
-    else:
-        _handle_interactive_mode(
-            ctx,
-            prompt,
-            model,
-            auto_mode=auto_mode,
-            auto_approve=auto_approve,
-            auto_max_steps=auto_max_steps,
-        )
+        return
 
-
-@cli.command()
-@click.argument("prompt", required=False)
-@click.option(
-    "-o",
-    "--output-format",
-    type=click.Choice(["text", "json", "stream-json"]),
-    default="text",
-    help="Output format",
-)
-@click.option(
-    "-m",
-    "--model",
-    default=None,
-    help="LLM model to use",
-)
-@click.pass_context
-def print_cmd(
-    ctx: click.Context,
-    prompt: str,
-    output_format: str,
-    model: Optional[str],
-) -> None:
-    """
-    Execute in headless mode (single prompt, output and exit).
-
-    PROMPT: The prompt to execute
-
-    Output formats:
-    - text: Plain text output (default)
-    - json: Single JSON object with response
-    - stream-json: Streaming JSON (newline-delimited)
-    """
-    if not prompt:
-        click.echo("Error: prompt required for print command", err=True)
-        raise click.Abort()
-
-    # Map output format to JSON flags
-    json_output = output_format == "json"
-    json_stream_output = output_format == "stream-json"
-
-    # Delegate to headless mode handler
-    _handle_headless_mode(
+    _handle_interactive_mode(
         ctx,
         prompt,
         model,
-        json_output=json_output,
-        json_stream_output=json_stream_output,
+        auto_mode=auto_mode,
+        auto_approve=auto_approve,
+        auto_max_steps=auto_max_steps,
     )
-
-
-# Alias for 'print' command (since 'print' is a Python keyword)
-cli.add_command(print_cmd, name="print")
-
-
-@cli.command(name="write-file")
-@click.argument("path", required=True)
-@click.argument("instruction", required=False, default="")
-@click.option(
-    "--type",
-    "file_type",
-    type=click.Choice(["python", "requirements", "json", "markdown", "yaml", "text"]),
-    default=None,
-    help="File type hint (defaults to auto-detect from filename)",
-)
-@click.option(
-    "--overwrite/--no-overwrite",
-    default=False,
-    help="Overwrite existing file",
-)
-@click.option(
-    "--max-attempts",
-    type=int,
-    default=3,
-    show_default=True,
-    help="Max regeneration attempts if validation fails",
-)
-@click.option(
-    "-m",
-    "--model",
-    default=None,
-    help="LLM model to use",
-)
-@click.pass_context
-def write_file_cmd(
-    ctx: click.Context,
-    path: str,
-    instruction: str,
-    file_type: Optional[str],
-    overwrite: bool,
-    max_attempts: int,
-    model: Optional[str],
-) -> None:
-    """
-    Generate a single file with strict, machine-consumable output and write it to disk.
-
-    This command is designed to avoid "prose" contamination for files like requirements.txt.
-    """
-    # Determine instruction source: argument or stdin
-    user_instruction = instruction
-    if (not user_instruction or not user_instruction.strip()) and not sys.stdin.isatty():
-        try:
-            user_instruction = sys.stdin.read()
-        except Exception as e:
-            click.echo(f"Error reading from stdin: {e}", err=True)
-            raise click.Abort()
-
-    if not user_instruction or not user_instruction.strip():
-        click.echo("Error: instruction required (argument or stdin)", err=True)
-        raise click.Abort()
-
-    if max_attempts < 1:
-        click.echo("Error: --max-attempts must be >= 1", err=True)
-        raise click.Abort()
-
-    # Load configuration
-    try:
-        project_root = ctx.obj.get("project_root") if ctx.obj else None
-        if project_root is None:
-            project_root = _find_project_root()
-        settings = load_settings(project_root=project_root)
-
-        if model:
-            settings.llm.model = model
-    except Exception as e:
-        click.echo(f"Error loading configuration: {e}", err=True)
-        raise click.Abort()
-
-    # Create LLM client + agent
-    try:
-        llm_client = create_llm_client(settings)
-        agent = Agent(
-            AgentConfig(
-                llm_client=llm_client,
-                max_tokens=settings.llm.max_tokens,
-                temperature=settings.llm.temperature,
-                stream=False,
-                project_root=project_root,
-            )
-        )
-    except Exception as e:
-        click.echo(f"Error initializing agent: {e}", err=True)
-        raise click.Abort()
-
-    # Generate validated content
-    try:
-        ft = detect_file_type(path, file_type)
-
-        def _gen(prompt: str) -> str:
-            return agent.process(prompt).content
-
-        content, result = generate_validated(
-            generate_fn=_gen,
-            file_type=ft,
-            target_path=path,
-            instruction=user_instruction,
-            max_attempts=max_attempts,
-        )
-
-        if not result.ok:
-            click.echo(f"Error: could not generate valid content: {result.error}", err=True)
-            raise click.Abort()
-
-        safe_write_text(path, content, overwrite=overwrite)
-        click.echo(path)
-    except FileExistsError:
-        click.echo(f"Error: file exists (use --overwrite): {path}", err=True)
-        raise click.Abort()
-    except click.Abort:
-        raise
-    except Exception as e:
-        click.echo(f"Error: {e}", err=True)
-        raise click.Abort()
-
-
-# ===== T090: Headless Mode Implementation =====
+    return
 
 
 def _handle_headless_mode(
@@ -380,6 +373,7 @@ def _handle_headless_mode(
     """
     # Determine input source: prompt argument or stdin
     user_input = prompt
+    input_source = "prompt"
 
     if not user_input or not user_input.strip():
         # Try to read from stdin
@@ -387,11 +381,14 @@ def _handle_headless_mode(
             # Read from stdin pipe
             try:
                 user_input = sys.stdin.read()
+                input_source = "stdin"
             except Exception as e:
+                _LOGGER.exception("headless stdin read failed")
                 click.echo(f"Error reading from stdin: {e}", err=True)
                 sys.exit(1)
         else:
             # No input source available
+            _LOGGER.error("headless no input source")
             click.echo(
                 "Error: No prompt provided. "
                 "Provide PROMPT argument or pipe via stdin.",
@@ -400,6 +397,7 @@ def _handle_headless_mode(
             sys.exit(1)
 
     if not user_input.strip():
+        _LOGGER.error("headless empty prompt")
         click.echo("Error: Empty prompt", err=True)
         sys.exit(1)
 
@@ -410,6 +408,24 @@ def _handle_headless_mode(
         if project_root is None:
             project_root = _find_project_root()
         settings = load_settings(project_root=project_root)
+
+        _init_file_logging(
+            project_root or os.getcwd(),
+            getattr(settings, "log_level", None) or os.getenv("LOG_LEVEL"),
+        )
+
+        _LOGGER.info(
+            "headless start project_root=%s model=%s json=%s json_stream=%s auto_mode=%s auto_approve=%s auto_max_steps=%s input_source=%s prompt_len=%s",
+            str(project_root),
+            str(model or settings.llm.model),
+            bool(json_output),
+            bool(json_stream_output),
+            bool(ctx.obj.get("auto_mode") if ctx.obj else False),
+            bool(ctx.obj.get("auto_approve") if ctx.obj else False),
+            int(ctx.obj.get("auto_max_steps") if ctx.obj else 0),
+            input_source,
+            len(user_input or ""),
+        )
 
         # Apply model override if provided
         if model:
@@ -448,6 +464,16 @@ def _handle_headless_mode(
 
         parser = Parser()
         parsed = parser.parse(user_input)
+
+        try:
+            _LOGGER.info(
+                "headless parsed_refs files=%s dirs=%s cmds=%s",
+                len(getattr(parsed, "file_refs", []) or []),
+                len(getattr(parsed, "directory_refs", []) or []),
+                len(getattr(parsed, "command_refs", []) or []),
+            )
+        except Exception:
+            pass
 
         # Build enhanced prompt with context from references
         enhanced_input = user_input
@@ -496,6 +522,15 @@ def _handle_headless_mode(
             # No references found, use original input
             enhanced_input = user_input
 
+        try:
+            _LOGGER.info(
+                "headless enhanced_input_len=%s context_parts=%s",
+                len(enhanced_input or ""),
+                len(context_parts),
+            )
+        except Exception:
+            pass
+
         # Debug: show what's being sent to the agent (for testing)
         import os
         if os.environ.get("DEBUG_CLI"):
@@ -507,9 +542,24 @@ def _handle_headless_mode(
             _handle_json_output(agent, enhanced_input)
         else:
             # Regular text output
+            t0 = time.time()
             turn = agent.process(enhanced_input)
+            dt_ms = int((time.time() - t0) * 1000)
+            try:
+                _LOGGER.info(
+                    "headless agent_done duration_ms=%s content_len=%s",
+                    dt_ms,
+                    len(getattr(turn, "content", "") or ""),
+                )
+                _LOGGER.debug(
+                    "headless agent_content_prefix=%s",
+                    (getattr(turn, "content", "") or "")[:1200],
+                )
+            except Exception:
+                pass
             click.echo(turn.content)
     except Exception as e:
+        _LOGGER.exception("headless processing failed")
         # Format error as JSON if in JSON mode
         if json_output or json_stream_output:
             error_json = _format_error_json(str(e))
@@ -641,6 +691,11 @@ def _handle_interactive_mode(
         if project_root is None:
             project_root = _find_project_root()
         settings = load_settings(project_root=project_root)
+
+        _init_file_logging(
+            project_root or os.getcwd(),
+            getattr(settings, "log_level", None) or os.getenv("LOG_LEVEL"),
+        )
 
         # Apply model override if provided
         if model:
@@ -806,7 +861,7 @@ class _ToolBlock:
     body: str
     ok: bool
     expanded: bool = False
-    max_lines: int = 30
+    max_lines: int = 12
 
     def render(self) -> str:
         # ANSI colors approximating the screenshot
@@ -1031,6 +1086,17 @@ def _run_prompt_toolkit_chat(
 
     def _accept(buf: Buffer) -> None:
         text = buf.text
+        # Ensure up/down history works even with a custom accept_handler.
+        try:
+            if text.strip():
+                buf.append_to_history()
+        except Exception:
+            try:
+                # Fallback for older/newer prompt_toolkit variants.
+                if text.strip() and hasattr(buf, "history") and hasattr(buf.history, "append_string"):
+                    buf.history.append_string(text)
+            except Exception:
+                pass
         buf.document = Document(text="", cursor_position=0)
         input_state["last_text"] = text
         try:
@@ -1103,6 +1169,7 @@ def _run_prompt_toolkit_chat(
         line = (line or "").strip("\r\n")
         if not line.strip():
             return
+        _LOGGER.info("user_input mode=%s text=%s", mode.get("value"), (line[:500] if len(line) > 500 else line))
         if line.strip().lower() in ("exit", "quit", "q"):
             raise EOFError()
 
@@ -1119,6 +1186,7 @@ def _run_prompt_toolkit_chat(
             # shortcut
             if parts and parts[0].lower() == "/plan":
                 mode["value"] = "plan"
+                _LOGGER.info("mode_switch to=plan via /plan")
                 blocks.append(_ToolBlock(title="Mode: plan", body="", ok=True, expanded=True))
                 _refresh_output()
                 return
@@ -1126,6 +1194,7 @@ def _run_prompt_toolkit_chat(
             if parts and parts[0].lower() in ("/mode", "/m"):
                 if len(parts) >= 2 and str(parts[1]).strip().lower() in ("default", "plan", "bypass"):
                     mode["value"] = str(parts[1]).strip().lower()
+                    _LOGGER.info("mode_switch to=%s via /mode", mode["value"])
                     blocks.append(_ToolBlock(title=f"Mode: {mode['value']}", body="", ok=True, expanded=True))
                     _refresh_output()
                 else:
@@ -1176,6 +1245,7 @@ def _run_prompt_toolkit_chat(
 
         def _work() -> List[dict]:
             if use_auto:
+                _LOGGER.info("auto_start mode=%s max_steps=%s", mode.get("value"), int(auto_max_steps))
                 return _process_input_auto_collect(
                     agent=agent,
                     user_input=line,
@@ -1232,10 +1302,21 @@ def _run_prompt_toolkit_chat(
     @kb.add("c-o")
     def _(event) -> None:
         # Toggle last foldable block
+        found = None
         for b in reversed(blocks):
             if b.body and len(b.body.splitlines()) > b.max_lines:
                 b.expanded = not b.expanded
+                found = b
                 break
+        try:
+            _LOGGER.debug(
+                "ui_fold_toggle found=%s title=%s expanded=%s",
+                bool(found),
+                getattr(found, "title", None),
+                getattr(found, "expanded", None),
+            )
+        except Exception:
+            pass
         event.app.invalidate()
 
     @kb.add("c-c")
@@ -1243,6 +1324,10 @@ def _run_prompt_toolkit_chat(
     def _(event) -> None:
         # Escape cancels current run if any, otherwise exit.
         if thinking["value"]:
+            try:
+                _LOGGER.debug("ui_cancel esc pressed while thinking")
+            except Exception:
+                pass
             running["cancelled"] = True
             thinking["value"] = ""
             blocks.append(_ToolBlock(title="Cancelled", body="", ok=False))
@@ -1256,6 +1341,7 @@ def _run_prompt_toolkit_chat(
         # Trigger completion.
         try:
             b = input_buf
+            _LOGGER.debug("ui_completion tab text_prefix=%s", (b.text[:200] if isinstance(b.text, str) else ""))
             b.start_completion(select_first=False)
         except Exception:
             pass
@@ -1265,14 +1351,28 @@ def _run_prompt_toolkit_chat(
         # Single-line buffer uses up/down for cursor movement by default;
         # bind them to history navigation.
         try:
+            before = input_buf.text
             input_buf.history_backward(count=1)
+            after = input_buf.text
+            _LOGGER.debug(
+                "ui_history up before_len=%s after_len=%s",
+                len(before or ""),
+                len(after or ""),
+            )
         except Exception:
             pass
 
     @kb.add("down")
     def _(event) -> None:
         try:
+            before = input_buf.text
             input_buf.history_forward(count=1)
+            after = input_buf.text
+            _LOGGER.debug(
+                "ui_history down before_len=%s after_len=%s",
+                len(before or ""),
+                len(after or ""),
+            )
         except Exception:
             pass
 
@@ -1295,6 +1395,25 @@ def _run_prompt_toolkit_chat(
             text = document.text_before_cursor
             if not text.startswith("/"):
                 return
+
+            # /m -> /mode convenience.
+            if text == "/m":
+                yield Completion("/mode", start_position=-len(text))
+                return
+
+            # /mode argument completion.
+            if text.startswith("/mode"):
+                # Normalize: allow "/mode" and "/mode "
+                if text.strip() == "/mode":
+                    yield Completion("/mode ", start_position=-len(text))
+                    return
+                if text.startswith("/mode "):
+                    prefix = text[len("/mode ") :]
+                    for opt in ("default", "plan", "bypass"):
+                        if opt.startswith(prefix):
+                            yield Completion(opt, start_position=-len(prefix))
+                    return
+
             for w in slash_words:
                 if w.startswith(text):
                     yield Completion(w, start_position=-len(text))
@@ -1349,6 +1468,10 @@ def _process_input_auto_collect(
     executor = CommandExecutor()
 
     mode_norm = (mode or "default").strip().lower()
+    try:
+        _LOGGER.info("auto_collect_start mode=%s max_steps=%s", mode_norm, int(max_steps))
+    except Exception:
+        pass
     allowed_write_paths = {
         "plan": {".pycc/plan.md", ".pycc/tasks.md", ".pycc/plan.txt", ".pycc/tasks.txt"},
     }
@@ -1360,22 +1483,79 @@ def _process_input_auto_collect(
 
     def _check(domain: PermissionDomain, target: str) -> bool:
         if mode_norm == "bypass" or auto_approve:
+            try:
+                _LOGGER.info(
+                    "perm_check mode=%s domain=%s target=%s decision=ALLOW reason=%s",
+                    mode_norm,
+                    getattr(domain, "value", str(domain)),
+                    target,
+                    "bypass" if mode_norm == "bypass" else "auto_approve",
+                )
+            except Exception:
+                pass
             return True
         if permission_manager is None:
+            try:
+                _LOGGER.info(
+                    "perm_check mode=%s domain=%s target=%s decision=DENY reason=no_permission_manager",
+                    mode_norm,
+                    getattr(domain, "value", str(domain)),
+                    target,
+                )
+            except Exception:
+                pass
             return False
         res = permission_manager.check_permission(domain, target)
+        try:
+            rule = getattr(res, "matching_rule", None)
+            _LOGGER.info(
+                "perm_check mode=%s domain=%s target=%s status=%s action=%s rule=%s",
+                mode_norm,
+                getattr(domain, "value", str(domain)),
+                target,
+                getattr(getattr(res, "status", None), "value", str(getattr(res, "status", None))),
+                getattr(getattr(res, "action", None), "value", str(getattr(res, "action", None))),
+                getattr(rule, "pattern", None),
+            )
+        except Exception:
+            pass
         if res.status == PermissionStatus.GRANTED:
             return True
         return False
 
     def _execute_action(action: dict) -> dict:
         at = str(action.get("type", "")).strip().lower()
+        try:
+            _LOGGER.info(
+                "auto_action_start mode=%s type=%s action=%s",
+                mode_norm,
+                at,
+                str(action)[:800],
+            )
+        except Exception:
+            pass
         allowed = allowed_action_types.get(mode_norm, allowed_action_types["default"])
         if at not in allowed:
-            return {"type": at, "ok": False, "error": f"action not allowed in mode {mode_norm}"}
+            r0 = {"type": at, "ok": False, "error": f"action not allowed in mode {mode_norm}"}
+            try:
+                _LOGGER.warning(
+                    "auto_action_end mode=%s type=%s ok=%s error=%s",
+                    mode_norm,
+                    at,
+                    False,
+                    r0.get("error"),
+                )
+            except Exception:
+                pass
+            return r0
 
         if at == "done":
-            return {"type": "done", "ok": True}
+            r1 = {"type": "done", "ok": True}
+            try:
+                _LOGGER.info("auto_action_end mode=%s type=done ok=True", mode_norm)
+            except Exception:
+                pass
+            return r1
 
         if at == "mkdir":
             path_arg = str(action.get("path", "")).strip()
@@ -1385,7 +1565,12 @@ def _process_input_auto_collect(
                 return {"type": "mkdir", "path": path_arg, "ok": False, "error": "permission denied"}
             target = _resolve_under_root(project_root, path_arg)
             Path(target).mkdir(parents=True, exist_ok=True)
-            return {"type": "mkdir", "path": path_arg, "ok": True}
+            r2 = {"type": "mkdir", "path": path_arg, "ok": True}
+            try:
+                _LOGGER.info("auto_action_end mode=%s type=mkdir ok=True path=%s", mode_norm, path_arg)
+            except Exception:
+                pass
+            return r2
 
         if at == "read_file":
             path_arg = str(action.get("path", "")).strip()
@@ -1397,21 +1582,42 @@ def _process_input_auto_collect(
             p = Path(target)
             if not p.exists() or not p.is_file():
                 return {"type": "read_file", "path": path_arg, "ok": False, "error": "file not found"}
-            return {"type": "read_file", "path": path_arg, "ok": True, "content": p.read_text(encoding="utf-8")}
+            content = p.read_text(encoding="utf-8")
+            r3 = {"type": "read_file", "path": path_arg, "ok": True, "content": content}
+            try:
+                _LOGGER.info(
+                    "auto_action_end mode=%s type=read_file ok=True path=%s content_len=%s",
+                    mode_norm,
+                    path_arg,
+                    len(content),
+                )
+            except Exception:
+                pass
+            return r3
 
         if at == "read_dir":
             path_arg = str(action.get("path", "")).strip()
             if not path_arg:
                 return {"type": "read_dir", "ok": False, "error": "read_dir requires path"}
-            if not _check(PermissionDomain.FILE_READ, path_arg):
-                return {"type": "read_dir", "path": path_arg, "ok": False, "error": "permission denied"}
             recursive = bool(action.get("recursive", True))
             max_entries = int(action.get("max_entries", 200))
             if max_entries < 1:
                 max_entries = 1
+            if not _check(PermissionDomain.FILE_READ, path_arg):
+                return {"type": "read_dir", "path": path_arg, "ok": False, "error": "permission denied"}
             target = _resolve_under_root(project_root, path_arg)
             listing = _format_dir_listing(target, recursive=recursive, max_entries=max_entries)
-            return {"type": "read_dir", "path": path_arg, "ok": True, "listing": listing}
+            r4 = {"type": "read_dir", "path": path_arg, "ok": True, "listing": listing}
+            try:
+                _LOGGER.info(
+                    "auto_action_end mode=%s type=read_dir ok=True path=%s listing_len=%s",
+                    mode_norm,
+                    path_arg,
+                    len(listing or ""),
+                )
+            except Exception:
+                pass
+            return r4
 
         if at == "write_file":
             path_arg = str(action.get("path", "")).strip()
@@ -1427,7 +1633,18 @@ def _process_input_auto_collect(
                 return {"type": "write_file", "path": path_arg, "ok": False, "error": "permission denied"}
             target = _resolve_under_root(project_root, path_arg)
             safe_write_text(target, content, overwrite=overwrite)
-            return {"type": "write_file", "path": path_arg, "ok": True}
+            r5 = {"type": "write_file", "path": path_arg, "ok": True}
+            try:
+                _LOGGER.info(
+                    "auto_action_end mode=%s type=write_file ok=True path=%s content_len=%s overwrite=%s",
+                    mode_norm,
+                    path_arg,
+                    len(content or ""),
+                    bool(overwrite),
+                )
+            except Exception:
+                pass
+            return r5
 
         if at == "gen_file":
             path_arg = str(action.get("path", "")).strip()
@@ -1461,7 +1678,18 @@ def _process_input_auto_collect(
             if not result.ok:
                 return {"type": "gen_file", "path": path_arg, "ok": False, "error": result.error}
             safe_write_text(target, content2, overwrite=overwrite)
-            return {"type": "gen_file", "path": path_arg, "ok": True}
+            r6 = {"type": "gen_file", "path": path_arg, "ok": True}
+            try:
+                _LOGGER.info(
+                    "auto_action_end mode=%s type=gen_file ok=True path=%s content_len=%s overwrite=%s",
+                    mode_norm,
+                    path_arg,
+                    len(content2 or ""),
+                    bool(overwrite),
+                )
+            except Exception:
+                pass
+            return r6
 
         if at == "run":
             command = str(action.get("command", "")).strip()
@@ -1474,8 +1702,18 @@ def _process_input_auto_collect(
             cmd_parts = shlex.split(command, posix=False)
             if not cmd_parts:
                 return {"type": "run", "command": command, "ok": False, "error": "run command parsed empty"}
-            res = executor.execute(*cmd_parts, working_dir=working_dir_resolved)
-            return {
+
+            # Windows-friendly: shlex(posix=False) may preserve surrounding quotes.
+            # Strip wrapping quotes so `python -c "print(123)"` works.
+            norm_parts = []
+            for p in cmd_parts:
+                if len(p) >= 2 and ((p[0] == '"' and p[-1] == '"') or (p[0] == "'" and p[-1] == "'")):
+                    norm_parts.append(p[1:-1])
+                else:
+                    norm_parts.append(p)
+
+            res = executor.execute(*norm_parts, working_dir=working_dir_resolved)
+            r7 = {
                 "type": "run",
                 "command": command,
                 "ok": bool(res.success),
@@ -1484,6 +1722,20 @@ def _process_input_auto_collect(
                 "stderr": res.stderr,
                 "timed_out": res.timed_out,
             }
+            try:
+                _LOGGER.info(
+                    "auto_action_end mode=%s type=run ok=%s rc=%s stdout_len=%s stderr_len=%s timed_out=%s cmd=%s",
+                    mode_norm,
+                    bool(r7.get("ok")),
+                    r7.get("return_code"),
+                    len((r7.get("stdout") or "")),
+                    len((r7.get("stderr") or "")),
+                    bool(r7.get("timed_out")),
+                    (command[:500] if isinstance(command, str) else ""),
+                )
+            except Exception:
+                pass
+            return r7
 
         return {"type": at, "ok": False, "error": f"unknown action type: {at}"}
 
@@ -1498,16 +1750,32 @@ def _process_input_auto_collect(
     if mode_norm == "plan":
         system_rules += "PLAN MODE: Focus on writing plan files only.\n"
 
-    for _ in range(max_steps):
+    for step in range(max_steps):
         prompt = user_input
         if tool_context:
             prompt = tool_context + "\n\n" + prompt
         prompt = system_rules + "\n" + prompt
         turn = agent.process(prompt)
+        try:
+            _LOGGER.debug(
+                "auto_collect_model_output step=%s content_prefix=%s",
+                step,
+                (getattr(turn, "content", "") or "")[:1200],
+            )
+        except Exception:
+            pass
         raw = _extract_first_json_object(turn.content)
         data = json.loads(raw) if raw else {}
         actions = data.get("actions") if isinstance(data, dict) else None
         if not isinstance(actions, list):
+            try:
+                _LOGGER.warning(
+                    "auto_collect_invalid_actions step=%s output_prefix=%s",
+                    step,
+                    (getattr(turn, "content", "") or "")[:1200],
+                )
+            except Exception:
+                pass
             return [{"type": "tool", "ok": False, "error": "invalid actions"}]
         results: List[dict] = []
         done = False
@@ -1520,6 +1788,15 @@ def _process_input_auto_collect(
             if r.get("type") == "done":
                 done = True
         last_results = results
+        try:
+            _LOGGER.info(
+                "auto_collect_step_results step=%s done=%s results=%s",
+                step,
+                bool(done),
+                ",".join([f"{x.get('type')}:{'ok' if x.get('ok') else 'fail'}" for x in results]),
+            )
+        except Exception:
+            pass
         tool_context = "--- Tool Results ---\n" + json.dumps({"results": results}, ensure_ascii=False) + "\n--- End Tool Results ---"
         if done:
             break
@@ -1809,16 +2086,57 @@ def _process_input_auto(
 
     def _check(domain: PermissionDomain, target: str, ask_message: str) -> bool:
         if mode_norm == "bypass":
+            try:
+                _LOGGER.info(
+                    "perm_check mode=%s domain=%s target=%s decision=ALLOW reason=bypass",
+                    mode_norm,
+                    getattr(domain, "value", str(domain)),
+                    target,
+                )
+            except Exception:
+                pass
             return True
         if auto_approve:
+            try:
+                _LOGGER.info(
+                    "perm_check mode=%s domain=%s target=%s decision=ALLOW reason=auto_approve",
+                    mode_norm,
+                    getattr(domain, "value", str(domain)),
+                    target,
+                )
+            except Exception:
+                pass
             return True
         if permission_manager is None:
             # Backward-compatible behavior: ask
+            try:
+                _LOGGER.info(
+                    "perm_check mode=%s domain=%s target=%s decision=ASK reason=no_permission_manager",
+                    mode_norm,
+                    getattr(domain, "value", str(domain)),
+                    target,
+                )
+            except Exception:
+                pass
             return approval.confirm(ask_message, default=False)
         try:
             res = permission_manager.check_permission(domain, target)
         except Exception:
             return approval.confirm(ask_message, default=False)
+
+        try:
+            rule = getattr(res, "matching_rule", None)
+            _LOGGER.info(
+                "perm_check mode=%s domain=%s target=%s status=%s action=%s rule=%s",
+                mode_norm,
+                getattr(domain, "value", str(domain)),
+                target,
+                getattr(getattr(res, "status", None), "value", str(getattr(res, "status", None))),
+                getattr(getattr(res, "action", None), "value", str(getattr(res, "action", None))),
+                getattr(rule, "pattern", None),
+            )
+        except Exception:
+            pass
 
         if res.status == PermissionStatus.GRANTED:
             return True
@@ -1980,10 +2298,15 @@ def _process_input_auto(
 
         with console.status("[dark_orange]Puzzling...[/] [bright_black](thinking)[/]", spinner="dots"):
             turn = agent.process(prompt)
+        try:
+            _LOGGER.debug("auto_model_output step=%s content_prefix=%s", step, (turn.content[:1200] if getattr(turn, "content", None) else ""))
+        except Exception:
+            pass
 
         try:
             actions = _parse_auto_actions(turn.content)
         except Exception as e:
+            _LOGGER.exception("auto_parse_failed step=%s", step)
             console.print(Text(f"Error: auto output parse failed: {e}", style="red"))
             console.print(Text(turn.content, style="dim"))
             return
