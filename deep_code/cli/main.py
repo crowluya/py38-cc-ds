@@ -231,6 +231,207 @@ def print_command(
     )
 
 
+# CMD-008 to CMD-010: Init command
+@cli.command(name="init")
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    help="Skip interactive prompts, use defaults",
+)
+@click.pass_context
+def init_command(ctx: click.Context, yes: bool) -> None:
+    """
+    Initialize a new DeepCode project.
+
+    Creates .deepcode/ directory and generates CLAUDE.md template.
+    """
+    project_root = Path.cwd()
+    deepcode_dir = project_root / ".deepcode"
+    claude_md = project_root / "CLAUDE.md"
+
+    # Check if already initialized
+    if deepcode_dir.exists():
+        click.echo(f"Project already initialized: {deepcode_dir}")
+        if not yes and not click.confirm("Reinitialize?"):
+            return
+
+    # Detect project type
+    project_type = _detect_project_type(project_root)
+    project_name = project_root.name
+
+    if not yes:
+        # Interactive mode
+        project_name = click.prompt("Project name", default=project_name)
+        project_type = click.prompt(
+            "Project type",
+            default=project_type,
+            type=click.Choice(["python", "node", "go", "rust", "java", "other"]),
+        )
+
+    # Create .deepcode directory
+    deepcode_dir.mkdir(parents=True, exist_ok=True)
+    (deepcode_dir / "sessions").mkdir(exist_ok=True)
+
+    # Create default settings.json
+    settings_path = deepcode_dir / "settings.json"
+    if not settings_path.exists():
+        default_settings = {
+            "llm": {
+                "provider": "openai",
+                "model": "deepseek-r1-70b",
+                "base_url": "http://localhost:8000/v1",
+            },
+            "permissions": {
+                "default_mode": "ask",
+            },
+        }
+        with open(settings_path, "w", encoding="utf-8") as f:
+            json.dump(default_settings, f, indent=2, ensure_ascii=False)
+        click.echo(f"Created: {settings_path}")
+
+    # Generate CLAUDE.md
+    if not claude_md.exists() or (yes or click.confirm("Generate CLAUDE.md?")):
+        content = _generate_claude_md(project_name, project_type, project_root)
+        with open(claude_md, "w", encoding="utf-8") as f:
+            f.write(content)
+        click.echo(f"Created: {claude_md}")
+
+    click.echo(f"\nProject initialized: {project_root}")
+    click.echo("Run 'deepcode chat' to start.")
+
+
+def _detect_project_type(project_root: Path) -> str:
+    """Detect project type from files."""
+    if (project_root / "pyproject.toml").exists() or (project_root / "setup.py").exists():
+        return "python"
+    if (project_root / "package.json").exists():
+        return "node"
+    if (project_root / "go.mod").exists():
+        return "go"
+    if (project_root / "Cargo.toml").exists():
+        return "rust"
+    if (project_root / "pom.xml").exists() or (project_root / "build.gradle").exists():
+        return "java"
+    return "other"
+
+
+def _generate_claude_md(project_name: str, project_type: str, project_root: Path) -> str:
+    """Generate CLAUDE.md content based on project type."""
+    templates = {
+        "python": '''# {name}
+
+## Project Overview
+
+This is a Python project.
+
+## Development Commands
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests
+pytest
+
+# Run linting
+flake8 .
+```
+
+## Project Structure
+
+```
+{name}/
+├── src/           # Source code
+├── tests/         # Test files
+└── requirements.txt
+```
+
+## Key Files
+
+- `requirements.txt` - Python dependencies
+- `setup.py` or `pyproject.toml` - Package configuration
+''',
+        "node": '''# {name}
+
+## Project Overview
+
+This is a Node.js project.
+
+## Development Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
+```
+
+## Project Structure
+
+```
+{name}/
+├── src/           # Source code
+├── tests/         # Test files
+└── package.json
+```
+''',
+        "go": '''# {name}
+
+## Project Overview
+
+This is a Go project.
+
+## Development Commands
+
+```bash
+# Build
+go build ./...
+
+# Run tests
+go test ./...
+
+# Run linting
+golangci-lint run
+```
+
+## Project Structure
+
+```
+{name}/
+├── cmd/           # Main applications
+├── internal/      # Private code
+├── pkg/           # Public libraries
+└── go.mod
+```
+''',
+        "other": '''# {name}
+
+## Project Overview
+
+Describe your project here.
+
+## Development Commands
+
+Add your development commands here.
+
+## Project Structure
+
+Describe your project structure here.
+''',
+    }
+
+    template = templates.get(project_type, templates["other"])
+    return template.format(name=project_name)
+
+
 @cli.command(name="write-file")
 @click.argument("path")
 @click.argument("instruction")
@@ -319,6 +520,22 @@ def write_file_command(
     help="LLM model to use",
 )
 @click.option(
+    "-c",
+    "--continue",
+    "continue_session",
+    is_flag=True,
+    help="Continue the most recent conversation",
+)
+@click.option(
+    "-r",
+    "--resume",
+    "resume_session",
+    default=None,
+    help="Resume a specific session by ID (or latest if no ID given)",
+    is_flag=False,
+    flag_value="__latest__",
+)
+@click.option(
     "--json",
     "json_output",
     is_flag=True,
@@ -356,6 +573,8 @@ def chat(
     prompt: str,
     print_mode: bool,
     model: Optional[str],
+    continue_session: bool,
+    resume_session: Optional[str],
     json_output: bool,
     json_stream_output: bool,
     auto_mode: bool,
@@ -374,6 +593,9 @@ def chat(
 
     If --json is specified, outputs response as JSON (requires -p).
     If --json-stream is specified, outputs streaming JSON (requires -p).
+
+    If -c/--continue is specified, continues the most recent conversation.
+    If -r/--resume is specified, resumes a specific session by ID.
     """
     # Validate JSON flag usage
     if (json_output or json_stream_output) and not print_mode:
@@ -394,6 +616,27 @@ def chat(
         click.echo("Error: --auto-max-steps must be >= 1", err=True)
         raise click.Abort()
 
+    # Handle session resume/continue
+    session_to_resume = None
+    if continue_session or resume_session:
+        from deep_code.cli.session import SessionStore, get_latest_session, load_session
+
+        project_root = str(Path.cwd())
+
+        if continue_session or resume_session == "__latest__":
+            session_to_resume = get_latest_session(project_root)
+            if not session_to_resume:
+                click.echo("No previous session found to continue.", err=True)
+                # Continue without session, don't abort
+        elif resume_session:
+            session_to_resume = load_session(resume_session, project_root)
+            if not session_to_resume:
+                click.echo(f"Session '{resume_session}' not found.", err=True)
+                raise click.Abort()
+
+        if session_to_resume:
+            click.echo(f"Resuming session: {session_to_resume.id} ({len(session_to_resume.messages)} messages)")
+
     if print_mode:
         _handle_headless_mode(
             ctx,
@@ -401,6 +644,7 @@ def chat(
             model,
             json_output=json_output,
             json_stream_output=json_stream_output,
+            session=session_to_resume,
         )
         return
 
@@ -411,6 +655,7 @@ def chat(
         auto_mode=auto_mode,
         auto_approve=auto_approve,
         auto_max_steps=auto_max_steps,
+        session=session_to_resume,
     )
     return
 
@@ -421,6 +666,7 @@ def _handle_headless_mode(
     model: Optional[str],
     json_output: bool = False,
     json_stream_output: bool = False,
+    session: Optional["Session"] = None,
 ) -> None:
     """
     Handle headless mode execution.
@@ -431,6 +677,7 @@ def _handle_headless_mode(
         model: Optional model override
         json_output: Output as JSON
         json_stream_output: Output as streaming JSON
+        session: Optional session to resume
 
     Raises:
         SystemExit: On error
@@ -737,6 +984,7 @@ def _handle_interactive_mode(
     auto_mode: bool = False,
     auto_approve: bool = False,
     auto_max_steps: int = 20,
+    session: Optional["Session"] = None,
 ) -> None:
     """
     Handle interactive chat mode.
@@ -745,6 +993,10 @@ def _handle_interactive_mode(
         ctx: Click context
         initial_prompt: Optional initial prompt to send
         model: Optional model override
+        auto_mode: Enable auto agent mode
+        auto_approve: Auto-approve all actions
+        auto_max_steps: Max iterations in auto mode
+        session: Optional session to resume
 
     Raises:
         SystemExit: On error
@@ -875,6 +1127,7 @@ def _handle_interactive_mode(
         auto_approve=auto_approve,
         auto_max_steps=auto_max_steps,
         initial_prompt=initial_prompt.strip() if initial_prompt else "",
+        session=session,
     )
 
 
@@ -964,6 +1217,7 @@ def _run_prompt_toolkit_chat(
     auto_approve: bool,
     auto_max_steps: int,
     initial_prompt: str,
+    session: Optional["Session"] = None,
 ) -> None:
     """Prompt-toolkit based chat UI with fold/unfold tool blocks."""
     try:
@@ -987,6 +1241,12 @@ def _run_prompt_toolkit_chat(
         return
 
     import concurrent.futures
+    from deep_code.cli.session import Session, create_session, save_session
+
+    # Create or use existing session
+    if session is None:
+        session = create_session(project_root, start_mode)
+    current_session = session
 
     mode = {"value": (start_mode or "default").strip().lower()}
     thinking = {"value": ""}
@@ -1135,8 +1395,12 @@ def _run_prompt_toolkit_chat(
         app.invalidate()
 
     # UI-005 & UI-006: Multiline input buffer with dynamic height
+    # CMD-006: Integrate file completion
     from prompt_toolkit.layout.dimension import Dimension
-    input_buf = Buffer(multiline=True, accept_handler=_accept, history=InMemoryHistory())
+    from deep_code.cli.completion import create_completer
+
+    file_completer = create_completer(project_root=project_root)
+    input_buf = Buffer(multiline=True, accept_handler=_accept, history=InMemoryHistory(), completer=file_completer)
     input_ctl = BufferControl(buffer=input_buf, focusable=True)
     # Dynamic height: min 3 lines, max 10 lines, preferred 3
     input_win = Window(
@@ -1200,7 +1464,12 @@ def _run_prompt_toolkit_chat(
             return
         _LOGGER.info("user_input mode=%s text=%s", mode.get("value"), (line[:500] if len(line) > 500 else line))
         if line.strip().lower() in ("exit", "quit", "q"):
+            # Save session before exit
+            save_session(current_session, project_root)
             raise EOFError()
+
+        # Record user message in session
+        current_session.add_user_message(line)
 
         # show user prompt as a block
         blocks.append(_ToolBlock(title=f"> {line}", body="", ok=True, expanded=True))
@@ -1333,14 +1602,26 @@ def _run_prompt_toolkit_chat(
 
             def _apply() -> None:
                 _set_thinking(False)
+                assistant_content = ""
                 if use_auto:
                     blocks.extend(_format_action_to_blocks(results))
                     blocks.append(_ToolBlock(title="DONE", body="", ok=True, expanded=True))
+                    # Collect all content for session
+                    for r in results:
+                        if isinstance(r, dict) and r.get("content"):
+                            assistant_content += str(r.get("content", "")) + "\n"
                 else:
                     content = ""
                     if results and isinstance(results[0], dict):
                         content = str(results[0].get("content", "") or "")
                     blocks.append(_ToolBlock(title="Assistant", body=content, ok=True))
+                    assistant_content = content
+
+                # Record assistant message and save session
+                if assistant_content.strip():
+                    current_session.add_assistant_message(assistant_content.strip())
+                save_session(current_session, project_root)
+
                 _refresh_output()
                 try:
                     app.layout.focus(input_win)
