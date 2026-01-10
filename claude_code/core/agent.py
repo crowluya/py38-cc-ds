@@ -10,12 +10,15 @@ Handles:
 - Command output injection into context
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from claude_code.core.context import ContextManager, LoadError, LongTermMemory
 from claude_code.core.executor import CommandExecutor
+from claude_code.core.tools.base import ToolCall as NewToolCall, ToolResult as NewToolResult
+from claude_code.core.tools.registry import ToolRegistry
+from claude_code.core.tool_executor import ToolExecutor
 
 
 class MessageRole(Enum):
@@ -379,6 +382,10 @@ class AgentConfig:
     project_root: Optional[str] = None
     auto_load_memory: bool = True
     resolve_modular_imports: bool = False
+    # T011: Tool Use support
+    tool_registry: Optional[ToolRegistry] = None
+    max_tool_rounds: int = 10
+    on_tool_call: Optional[Callable[[NewToolCall, NewToolResult], None]] = None
 
 
 class Agent:
@@ -406,6 +413,15 @@ class Agent:
         self._command_executor = CommandExecutor()
         self._long_term_memory: Optional[LongTermMemory] = None
 
+        # T011: Initialize tool registry and executor
+        self._tool_registry: Optional[ToolRegistry] = config.tool_registry
+        self._tool_executor: Optional[ToolExecutor] = None
+        if self._tool_registry:
+            self._tool_executor = ToolExecutor(
+                registry=self._tool_registry,
+                require_approval=False,
+            )
+
         # T051: Auto-load long-term memory files if enabled
         if config.auto_load_memory and config.project_root:
             self._load_long_term_memory(
@@ -426,13 +442,17 @@ class Agent:
         # Add user message to history
         self._add_user_message(user_input)
 
-        # Call LLM
+        # T011: Tool loop implementation
+        if self._tool_registry and self._tool_executor:
+            return self._process_with_tools()
+
+        # Legacy processing without tools
         if self._config.stream:
             turn = self._call_llm_stream()
         else:
             turn = self._call_llm()
 
-        # Handle tool calls
+        # Handle tool calls (legacy)
         if turn.has_tools:
             turn = self._handle_tool_calls(turn)
 
@@ -440,6 +460,234 @@ class Agent:
         self._add_assistant_message(turn.content, turn.tool_calls)
 
         return turn
+
+    def _process_with_tools(self) -> ConversationTurn:
+        """
+        Process with tool loop support.
+
+        Returns:
+            ConversationTurn with final response
+        """
+        tool_round = 0
+        max_rounds = self._config.max_tool_rounds
+
+        while tool_round < max_rounds:
+            # Call LLM with tools
+            turn = self._call_llm_with_tools()
+
+            # Check if we have tool calls
+            if not turn.has_tools:
+                # No more tool calls, add final response and return
+                self._add_assistant_message(turn.content)
+                return turn
+
+            # Add assistant message with tool calls to history
+            self._add_assistant_message_with_tool_calls(turn)
+
+            # Execute tool calls
+            tool_results = self._execute_new_tool_calls(turn.tool_calls)
+
+            # Add tool results to history
+            for tool_call, result in zip(turn.tool_calls, tool_results):
+                self._add_tool_result_message(tool_call, result)
+
+                # Invoke callback if configured
+                if self._config.on_tool_call:
+                    try:
+                        self._config.on_tool_call(tool_call, result)
+                    except Exception:
+                        pass  # Don't let callback errors affect execution
+
+            tool_round += 1
+
+        # Max rounds reached, get final response
+        turn = self._call_llm_with_tools()
+        self._add_assistant_message(turn.content)
+        return turn
+
+    def _call_llm_with_tools(self) -> ConversationTurn:
+        """
+        Call LLM with tools schema.
+
+        Returns:
+            ConversationTurn with response
+        """
+        messages = self._format_messages_for_llm()
+
+        # Get tools schema from registry (only enabled tools)
+        tools = None
+        if self._tool_registry:
+            tools = self._tool_registry.get_tools_schema(include_disabled=False)
+
+        kwargs = {
+            "max_tokens": self._config.max_tokens,
+            "temperature": self._config.temperature,
+        }
+
+        if tools:
+            kwargs["tools"] = tools
+
+        response = self._config.llm_client.chat_completion(
+            messages=messages,
+            **kwargs
+        )
+
+        # Extract content from response
+        if isinstance(response, dict):
+            content = response.get("content", "")
+            finish_reason = response.get("finish_reason", "stop")
+            tool_calls_data = response.get("tool_calls")
+        else:
+            content = getattr(response, "content", "")
+            finish_reason = getattr(response, "finish_reason", "stop")
+            tool_calls_data = getattr(response, "tool_calls", None)
+
+        # Parse tool calls
+        tool_calls = None
+        if tool_calls_data:
+            tool_calls = self._parse_new_tool_calls(tool_calls_data)
+
+        return ConversationTurn(
+            content=content,
+            finish_reason=finish_reason,
+            tool_calls=tool_calls,
+            raw_response=response,
+        )
+
+    def _parse_new_tool_calls(self, raw_tools: Any) -> List[NewToolCall]:
+        """
+        Parse tool calls from LLM response into NewToolCall format.
+
+        Args:
+            raw_tools: Raw tool calls from LLM
+
+        Returns:
+            List of NewToolCall objects
+        """
+        if not raw_tools:
+            return []
+
+        tool_calls = []
+
+        if isinstance(raw_tools, list):
+            for raw in raw_tools:
+                tool_call = self._parse_single_new_tool_call(raw)
+                if tool_call:
+                    tool_calls.append(tool_call)
+        elif isinstance(raw_tools, dict):
+            tool_call = self._parse_single_new_tool_call(raw_tools)
+            if tool_call:
+                tool_calls.append(tool_call)
+
+        return tool_calls
+
+    def _parse_single_new_tool_call(self, raw: Any) -> Optional[NewToolCall]:
+        """
+        Parse a single tool call.
+
+        Args:
+            raw: Raw tool call data
+
+        Returns:
+            NewToolCall or None
+        """
+        if isinstance(raw, dict):
+            call_id = raw.get("id", "")
+            name = raw.get("name", "")
+            arguments = raw.get("arguments", {})
+        else:
+            call_id = getattr(raw, "id", "")
+            name = getattr(raw, "name", "")
+            arguments = getattr(raw, "arguments", {})
+
+        if not name:
+            return None
+
+        # Handle arguments that might be a string (JSON)
+        if isinstance(arguments, str):
+            import json
+            try:
+                arguments = json.loads(arguments)
+            except json.JSONDecodeError:
+                arguments = {}
+
+        return NewToolCall(
+            id=call_id,
+            name=name,
+            arguments=arguments if isinstance(arguments, dict) else {},
+        )
+
+    def _execute_new_tool_calls(
+        self,
+        tool_calls: List[NewToolCall],
+    ) -> List[NewToolResult]:
+        """
+        Execute tool calls using the new tool executor.
+
+        Args:
+            tool_calls: List of tool calls to execute
+
+        Returns:
+            List of tool results
+        """
+        if not self._tool_executor:
+            return []
+
+        return self._tool_executor.execute_all(tool_calls)
+
+    def _add_assistant_message_with_tool_calls(self, turn: ConversationTurn) -> None:
+        """
+        Add assistant message with tool calls to history.
+
+        Args:
+            turn: Conversation turn with tool calls
+        """
+        # Store tool calls in metadata
+        metadata = None
+        if turn.tool_calls:
+            metadata = {
+                "tool_calls": [
+                    {"id": tc.id, "name": tc.name, "arguments": tc.arguments}
+                    for tc in turn.tool_calls
+                ]
+            }
+
+        self._history.append(
+            Message(
+                role=MessageRole.ASSISTANT,
+                content=turn.content or "",
+                metadata=metadata,
+            )
+        )
+
+    def _add_tool_result_message(
+        self,
+        tool_call: NewToolCall,
+        result: NewToolResult,
+    ) -> None:
+        """
+        Add tool result message to history.
+
+        Args:
+            tool_call: The tool call
+            result: The tool result
+        """
+        # Convert NewToolResult to legacy ToolResult for history
+        legacy_result = ToolResult(
+            tool_id=tool_call.id,
+            name=tool_call.name,
+            output=result.output,
+            success=result.success,
+            error_output=result.error or "",
+        )
+
+        self._history.append(
+            Message(
+                role=MessageRole.TOOL,
+                content="",
+                tool_result=legacy_result,
+            )
+        )
 
     def inject_context(self, context: str) -> None:
         """

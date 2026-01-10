@@ -110,9 +110,9 @@
 - **依赖**: T001-T009
 - **测试**: `tests/test_tool_executor.py` ✅ 19 passed
 
-### T011 - 更新 Agent 支持工具循环
-- [ ] 修改 `core/agent.py` 的 `process` 方法
-- [ ] 实现工具循环:
+### T011 - 更新 Agent 支持工具循环 ✅
+- [x] 修改 `core/agent.py` 的 `process` 方法
+- [x] 实现工具循环:
   ```
   while True:
       response = llm.chat(messages, tools=tools)
@@ -122,10 +122,10 @@
           result = executor.execute(tool_call)
           messages.append(tool_result_message)
   ```
-- [ ] 添加 `max_tool_rounds` 限制 (防止无限循环)
-- [ ] 添加工具调用回调 (用于 UI 显示)
+- [x] 添加 `max_tool_rounds` 限制 (防止无限循环)
+- [x] 添加工具调用回调 (用于 UI 显示)
 - **依赖**: T010
-- **测试**: `tests/test_agent_tool_loop.py`
+- **测试**: `tests/test_agent_tool_loop.py` ✅ 16 passed
 
 ### T012 - 更新 CLI 显示工具调用
 - [ ] 修改 `cli/main.py` 显示工具调用过程
