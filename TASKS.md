@@ -190,6 +190,29 @@
 
 ---
 
+## Phase 6: OCR 图像识别
+
+### T019 - OCR 引擎封装 `extensions/ocr/` ✅
+- [x] PaddleOCR 引擎初始化和配置
+- [x] 图像预处理 (格式转换、尺寸调整)
+- [x] OCR 结果解析和格式化
+- [x] 模型懒加载 (首次使用时加载)
+- [x] 支持中英文识别
+- **依赖**: 无
+- **测试**: `tests/test_ocr_engine.py` ✅ 26 passed
+- **依赖包**: paddlepaddle==2.4.2, paddleocr==2.6.1.3
+
+### T020 - ReadImage 工具 `core/tools/ocr.py`
+- [ ] ReadImage 工具实现
+- [ ] 支持文件路径输入
+- [ ] 支持 PNG, JPG, BMP 格式
+- [ ] 结果缓存集成
+- [ ] 错误处理 (文件不存在、格式不支持)
+- **依赖**: T019, T018 (缓存)
+- **测试**: `tests/test_tool_ocr.py`
+
+---
+
 ## 任务状态说明
 
 - `[ ]` - 待开始
