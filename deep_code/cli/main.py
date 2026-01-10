@@ -1077,8 +1077,8 @@ def _run_prompt_toolkit_chat(
     def _footer_text() -> ANSI:
         gray = "\x1b[90m"
         reset = "\x1b[0m"
-        # UI-010: Updated keyboard shortcuts
-        return ANSI(f"{gray}PgUp/PgDn: scroll | Ctrl+Enter: send | Ctrl+O: expand | Ctrl+L: clear | Esc: cancel/exit{reset}")
+        # UI-010: Updated keyboard shortcuts (Esc+Enter or Ctrl+J to submit)
+        return ANSI(f"{gray}PgUp/PgDn: scroll | Esc+Enter: send | Ctrl+O: expand | Ctrl+L: clear | Esc: cancel{reset}")
 
     def _status_text() -> ANSI:
         if thinking["value"]:
@@ -1356,9 +1356,10 @@ def _run_prompt_toolkit_chat(
         running["future"].add_done_callback(_on_done)
         return
 
-    # UI-007: Ctrl+Enter to submit (since Enter now inserts newline in multiline mode)
-    @kb.add("c-enter")
-    @kb.add("escape", "enter")  # Alt+Enter alternative
+    # UI-007: Submit input (since Enter now inserts newline in multiline mode)
+    # Use Escape+Enter sequence or Ctrl+J (which is equivalent to Ctrl+Enter in many terminals)
+    @kb.add("escape", "enter")  # Escape then Enter to submit
+    @kb.add("c-j")  # Ctrl+J as alternative (Ctrl+Enter sends this in some terminals)
     def _(event) -> None:
         # Submit the input
         buf = event.current_buffer
