@@ -127,13 +127,13 @@
 - **依赖**: T010
 - **测试**: `tests/test_agent_tool_loop.py` ✅ 16 passed
 
-### T012 - 更新 CLI 显示工具调用
-- [ ] 修改 `cli/main.py` 显示工具调用过程
-- [ ] 使用 `ToolBlock` 渲染每个工具调用
-- [ ] 支持展开/折叠工具输出
-- [ ] 显示工具执行状态 (成功/失败)
+### T012 - 更新 CLI 显示工具调用 ✅
+- [x] 修改 `cli/main.py` 显示工具调用过程
+- [x] 使用 `ToolBlock` 渲染每个工具调用
+- [x] 支持展开/折叠工具输出
+- [x] 显示工具执行状态 (成功/失败)
 - **依赖**: T011
-- **测试**: `tests/test_cli_tools.py`
+- **测试**: `tests/test_cli_tools.py` ✅ 18 passed
 
 ---
 
