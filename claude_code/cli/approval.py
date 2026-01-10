@@ -5,16 +5,17 @@ Python 3.8.10 compatible
 Windows 7 + Internal Network (DeepSeek R1 70B)
 """
 
-from typing import Any, Callable, List, Optional, TypeVar
+import logging
+from typing import List, Optional
 
 import colorama
-from questionary import Choice, Form, select
+import questionary
+from questionary import select
 
 # Initialize colorama for Windows 7 ANSI support
 colorama.init()
 
-
-T = TypeVar("T")
+_LOGGER = logging.getLogger(__name__)
 
 
 class Approval:
@@ -49,12 +50,14 @@ class Approval:
             True if user confirms, False otherwise
         """
         try:
-            import questionary
-
             result = questionary.confirm(message, default=default).ask()
             return result if result is not None else default
-        except Exception:
-            # Fallback to default on error
+        except KeyboardInterrupt:
+            return default
+        except EOFError:
+            return default
+        except Exception as e:
+            _LOGGER.debug("confirm failed: %s", e)
             return default
 
     def select(
@@ -82,7 +85,12 @@ class Approval:
             ).ask()
 
             return result
-        except Exception:
+        except KeyboardInterrupt:
+            return None
+        except EOFError:
+            return None
+        except Exception as e:
+            _LOGGER.debug("select failed: %s", e)
             return None
 
     def select_many(
@@ -100,16 +108,19 @@ class Approval:
         Returns:
             List of selected choice strings
         """
-        from questionary import checkbox
-
         try:
-            result = checkbox(
+            result = questionary.checkbox(
                 message,
                 choices=choices,
             ).ask()
 
             return result if result is not None else []
-        except Exception:
+        except KeyboardInterrupt:
+            return []
+        except EOFError:
+            return []
+        except Exception as e:
+            _LOGGER.debug("select_many failed: %s", e)
             return []
 
     def autocomplete(
@@ -127,16 +138,19 @@ class Approval:
         Returns:
             Selected choice string, or None if cancelled
         """
-        from questionary import autocomplete
-
         try:
-            result = autocomplete(
+            result = questionary.autocomplete(
                 message,
                 choices=choices,
             ).ask()
 
             return result
-        except Exception:
+        except KeyboardInterrupt:
+            return None
+        except EOFError:
+            return None
+        except Exception as e:
+            _LOGGER.debug("autocomplete failed: %s", e)
             return None
 
     def dangerous_action_confirm(
@@ -154,13 +168,12 @@ class Approval:
         Returns:
             True if user confirms, False otherwise
         """
-        import click
-
-        click.secho("\n⚠️  DANGEROUS ACTION ⚠️", fg="red", bold=True)
-        click.echo(f"Action: {action}")
+        # Use questionary.print for consistent styling
+        questionary.print("\n⚠️  DANGEROUS ACTION ⚠️", style="bold fg:red")
+        questionary.print(f"Action: {action}", style="fg:yellow")
 
         if details:
-            click.echo(f"Details: {details}")
+            questionary.print(f"Details: {details}", style="fg:gray")
 
         # Double confirmation for dangerous actions
         first = self.confirm("Are you sure you want to proceed?", default=False)
@@ -184,8 +197,6 @@ class Approval:
         Returns:
             True if user approves, False otherwise
         """
-        import click
-
         emoji = {
             "read": "📖",
             "write": "✏️",

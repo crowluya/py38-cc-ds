@@ -7,23 +7,46 @@ Windows 7 + Internal Network (DeepSeek R1 70B)
 
 import os
 import shlex
+import shutil
 import sys
 import time
 import logging
 from logging.handlers import RotatingFileHandler
-from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Callable
 
 import click
+import colorama
+
+# Rich imports - consolidated at top level
+from rich.console import Console
+from rich.columns import Columns
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.text import Text
 
 from claude_code.cli.filegen import detect_file_type
 from claude_code.cli.filegen import generate_validated
 from claude_code.cli.filegen import safe_write_text
 from claude_code.cli.approval import get_approval
+from claude_code.cli.utils import (
+    get_terminal_width as _get_terminal_width,
+    coerce_log_level as _coerce_log_level,
+    init_file_logging as _init_file_logging,
+    find_project_root as _find_project_root,
+    resolve_under_root as _resolve_under_root,
+    format_dir_listing as _format_dir_listing,
+    truncate_lines as _truncate_lines,
+    extract_first_json_object as _extract_first_json_object,
+)
+from claude_code.cli.models import ToolBlock as _ToolBlock
+from claude_code.cli.local_commands import handle_local_command as _handle_local_command
 from claude_code.config.loader import load_settings
 from claude_code.core.agent import Agent, AgentConfig
 from claude_code.llm.factory import create_llm_client
+
+# Initialize colorama for Windows 7 ANSI support
+colorama.init()
 
 
 # Version constant
@@ -33,91 +56,132 @@ VERSION = "0.1.0"
 _LOGGER = logging.getLogger("pycc")
 
 
-def _coerce_log_level(level: Optional[str]) -> int:
-    if not level:
-        return logging.INFO
-    s = str(level).strip().upper()
-    if s in ("CRITICAL", "FATAL"):
-        return logging.CRITICAL
-    if s == "ERROR":
-        return logging.ERROR
-    if s in ("WARN", "WARNING"):
-        return logging.WARNING
-    if s == "INFO":
-        return logging.INFO
-    if s == "DEBUG":
-        return logging.DEBUG
+def _check_permission(
+    domain,
+    target: str,
+    ask_message: str,
+    mode: str,
+    auto_approve: bool,
+    permission_manager,
+    approval_callback: Optional[Callable[[str], bool]] = None,
+) -> bool:
+    """
+    Check permission for an action.
+
+    Args:
+        domain: PermissionDomain enum value
+        target: Target path or command
+        ask_message: Message to show when asking user
+        mode: Current mode (default/plan/bypass)
+        auto_approve: Whether to auto-approve all actions
+        permission_manager: PermissionManager instance or None
+        approval_callback: Optional callback for approval (used in UI context)
+
+    Returns:
+        True if permission granted, False otherwise
+    """
+    from claude_code.security.permissions import PermissionStatus
+
+    approval = get_approval()
+    mode_norm = (mode or "default").strip().lower()
+
+    # Bypass mode or auto-approve: always allow
+    if mode_norm == "bypass" or auto_approve:
+        try:
+            _LOGGER.info(
+                "perm_check mode=%s domain=%s target=%s decision=ALLOW reason=%s",
+                mode_norm,
+                getattr(domain, "value", str(domain)),
+                target,
+                "bypass" if mode_norm == "bypass" else "auto_approve",
+            )
+        except Exception:
+            pass
+        return True
+
+    # No permission manager: ask user
+    if permission_manager is None:
+        try:
+            _LOGGER.info(
+                "perm_check mode=%s domain=%s target=%s decision=ASK reason=no_permission_manager",
+                mode_norm,
+                getattr(domain, "value", str(domain)),
+                target,
+            )
+        except Exception:
+            pass
+        try:
+            if approval_callback is not None:
+                ok = bool(approval_callback(ask_message))
+            else:
+                ok = bool(approval.confirm(ask_message, default=False))
+            _LOGGER.info(
+                "perm_check mode=%s domain=%s target=%s decision=%s reason=user_response",
+                mode_norm,
+                getattr(domain, "value", str(domain)),
+                target,
+                "ALLOW" if ok else "DENY",
+            )
+            return ok
+        except Exception:
+            return False
+
+    # Check with permission manager
     try:
-        return int(s)
+        res = permission_manager.check_permission(domain, target)
     except Exception:
-        return logging.INFO
+        return approval.confirm(ask_message, default=False)
 
-
-def _init_file_logging(project_root: str, level: Optional[str]) -> None:
     try:
-        root = Path(project_root)
-        log_dir = root / ".pycc"
-        log_dir.mkdir(parents=True, exist_ok=True)
-        log_path = log_dir / "pycc.log"
-
-        lvl = _coerce_log_level(level)
-        logger = _LOGGER
-        logger.setLevel(lvl)
-
-        for h in list(logger.handlers):
-            try:
-                logger.removeHandler(h)
-            except Exception:
-                pass
-
-        handler = RotatingFileHandler(
-            str(log_path),
-            maxBytes=2 * 1024 * 1024,
-            backupCount=3,
-            encoding="utf-8",
+        rule = getattr(res, "matching_rule", None)
+        _LOGGER.info(
+            "perm_check mode=%s domain=%s target=%s status=%s action=%s rule=%s",
+            mode_norm,
+            getattr(domain, "value", str(domain)),
+            target,
+            getattr(getattr(res, "status", None), "value", str(getattr(res, "status", None))),
+            getattr(getattr(res, "action", None), "value", str(getattr(res, "action", None))),
+            getattr(rule, "pattern", None),
         )
-        handler.setLevel(lvl)
-        formatter = logging.Formatter(
-            fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.propagate = False
-
-        logger.info("logging initialized: level=%s path=%s", logging.getLevelName(lvl), str(log_path))
     except Exception:
         pass
 
+    if res.status == PermissionStatus.GRANTED:
+        return True
+    if res.status == PermissionStatus.DENIED:
+        return False
 
-def _find_project_root() -> Optional[str]:
-    """
-    Find project root by looking for .env, .env.local, or .pycc directory.
+    # PENDING status: ask user
+    try:
+        _LOGGER.info(
+            "perm_check mode=%s domain=%s target=%s decision=ASK prompt=%s",
+            mode_norm,
+            getattr(domain, "value", str(domain)),
+            target,
+            ask_message,
+        )
+    except Exception:
+        pass
 
-    Searches upward from current directory until finding a project marker.
+    try:
+        if approval_callback is not None:
+            ok = bool(approval_callback(ask_message))
+        else:
+            ok = bool(approval.confirm(ask_message, default=False))
+    except Exception:
+        ok = False
 
-    Returns:
-        Project root path as string, or None if not found
-    """
-    cwd = Path.cwd()
-
-    # Search upward from current directory
-    for path in [cwd] + list(cwd.parents):
-        # Check for project markers
-        if (path / ".env.local").exists():
-            return str(path)
-        if (path / ".env").exists():
-            return str(path)
-        if (path / ".pycc").exists():
-            return str(path)
-        if (path / "pyproject.toml").exists():
-            return str(path)
-        if (path / "setup.py").exists():
-            return str(path)
-        if (path / ".git").exists():
-            return str(path)
-
-    return None
+    try:
+        _LOGGER.info(
+            "perm_check mode=%s domain=%s target=%s decision=%s reason=ask_user",
+            mode_norm,
+            getattr(domain, "value", str(domain)),
+            target,
+            "ALLOW" if ok else "DENY",
+        )
+    except Exception:
+        pass
+    return ok
 
 
 @click.group()
@@ -821,11 +885,6 @@ def _print_welcome(settings) -> None:
     Args:
         settings: Loaded settings
     """
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.columns import Columns
-    from rich.text import Text
-
     console = Console()
 
     left = Text()
@@ -853,44 +912,6 @@ def _print_welcome(settings) -> None:
     console.print(panel)
     console.print(Text("Type 'exit' to quit.", style="dim"))
     console.print()
-
-
-@dataclass
-class _ToolBlock:
-    title: str
-    body: str
-    ok: bool
-    expanded: bool = False
-    max_lines: int = 12
-
-    def render(self) -> str:
-        # ANSI colors approximating the screenshot
-        green = "\x1b[32m"
-        red = "\x1b[31m"
-        white = "\x1b[37m"
-        gray = "\x1b[90m"
-        reset = "\x1b[0m"
-
-        dot = green if self.ok else red
-        out = f"{dot}●{reset} {white}{self.title}{reset}\n"
-
-        body = self.body or ""
-        if not body:
-            return out
-        lines = body.splitlines()
-        # Tree style body rendering.
-        if (not self.expanded) and len(lines) > self.max_lines:
-            shown_lines = lines[: self.max_lines]
-            remain = len(lines) - self.max_lines
-            for ln in shown_lines:
-                out += f"{gray}│  {ln}{reset}\n"
-            out += f"{gray}└  … +{remain} lines (Ctrl+O to expand){reset}\n"
-            return out
-
-        for i, ln in enumerate(lines):
-            prefix = "│" if i < len(lines) - 1 else "└"
-            out += f"{gray}{prefix}  {ln}{reset}\n"
-        return out
 
 
 def _format_action_to_blocks(results: List[dict]) -> List[_ToolBlock]:
@@ -983,18 +1004,7 @@ def _run_prompt_toolkit_chat(
         white = "\x1b[37m"
         reset = "\x1b[0m"
 
-        cols = 100
-        try:
-            cols = app.output.get_size().columns
-        except Exception:
-            try:
-                import shutil
-
-                cols = shutil.get_terminal_size((100, 24)).columns
-            except Exception:
-                cols = 100
-
-        cols = max(60, cols)
+        cols = _get_terminal_width(app=app, default=100, min_width=60)
 
         inner_w = cols - 2
         mid = inner_w // 2
@@ -1114,17 +1124,7 @@ def _run_prompt_toolkit_chat(
     def _input_sep_text() -> ANSI:
         orange = "\x1b[38;5;208m"
         reset = "\x1b[0m"
-        cols = 100
-        try:
-            cols = get_app().output.get_size().columns
-        except Exception:
-            try:
-                import shutil
-
-                cols = shutil.get_terminal_size((100, 24)).columns
-            except Exception:
-                cols = 100
-        cols = max(20, cols)
+        cols = _get_terminal_width(app=get_app(), default=100, min_width=20)
         return ANSI(f"{orange}{'─' * cols}{reset}")
 
     input_sep_ctl = FormattedTextControl(text=_input_sep_text)
@@ -1487,12 +1487,11 @@ def _process_input_auto_collect(
     approval_callback: Optional[Callable[[str], bool]] = None,
 ) -> List[dict]:
     """Run auto loop but return the last step results for UI rendering."""
-    # This reuses the same core logic as _process_input_auto, but without printing.
     import json
 
     from claude_code.cli.filegen import detect_file_type, generate_validated, safe_write_text
     from claude_code.core.executor import CommandExecutor
-    from claude_code.security.permissions import PermissionDomain, PermissionStatus
+    from claude_code.security.permissions import PermissionDomain
 
     executor = CommandExecutor()
 
@@ -1510,92 +1509,16 @@ def _process_input_auto_collect(
         "bypass": {"mkdir", "read_file", "read_dir", "write_file", "gen_file", "run", "done"},
     }
 
-    approval = get_approval()
-
     def _check(domain: PermissionDomain, target: str, ask_message: str) -> bool:
-        if mode_norm == "bypass" or auto_approve:
-            try:
-                _LOGGER.info(
-                    "perm_check mode=%s domain=%s target=%s decision=ALLOW reason=%s",
-                    mode_norm,
-                    getattr(domain, "value", str(domain)),
-                    target,
-                    "bypass" if mode_norm == "bypass" else "auto_approve",
-                )
-            except Exception:
-                pass
-            return True
-        if permission_manager is None:
-            try:
-                _LOGGER.info(
-                    "perm_check mode=%s domain=%s target=%s decision=DENY reason=no_permission_manager",
-                    mode_norm,
-                    getattr(domain, "value", str(domain)),
-                    target,
-                )
-            except Exception:
-                pass
-            try:
-                ok = bool(approval.confirm(ask_message, default=False))
-                _LOGGER.info(
-                    "perm_check mode=%s domain=%s target=%s decision=%s reason=no_permission_manager",
-                    mode_norm,
-                    getattr(domain, "value", str(domain)),
-                    target,
-                    "ALLOW" if ok else "DENY",
-                )
-                return ok
-            except Exception:
-                return False
-        res = permission_manager.check_permission(domain, target)
-        try:
-            rule = getattr(res, "matching_rule", None)
-            _LOGGER.info(
-                "perm_check mode=%s domain=%s target=%s status=%s action=%s rule=%s",
-                mode_norm,
-                getattr(domain, "value", str(domain)),
-                target,
-                getattr(getattr(res, "status", None), "value", str(getattr(res, "status", None))),
-                getattr(getattr(res, "action", None), "value", str(getattr(res, "action", None))),
-                getattr(rule, "pattern", None),
-            )
-        except Exception:
-            pass
-        if res.status == PermissionStatus.GRANTED:
-            return True
-        if res.status == PermissionStatus.PENDING:
-            try:
-                _LOGGER.info(
-                    "perm_check mode=%s domain=%s target=%s decision=ASK prompt=%s",
-                    mode_norm,
-                    getattr(domain, "value", str(domain)),
-                    target,
-                    ask_message,
-                )
-            except Exception:
-                pass
-
-            try:
-                if approval_callback is not None:
-                    ok = bool(approval_callback(ask_message))
-                else:
-                    ok = bool(approval.confirm(ask_message, default=False))
-            except Exception:
-                ok = False
-
-            try:
-                _LOGGER.info(
-                    "perm_check mode=%s domain=%s target=%s decision=%s reason=ask_user",
-                    mode_norm,
-                    getattr(domain, "value", str(domain)),
-                    target,
-                    "ALLOW" if ok else "DENY",
-                )
-            except Exception:
-                pass
-            return ok
-
-        return False
+        return _check_permission(
+            domain=domain,
+            target=target,
+            ask_message=ask_message,
+            mode=mode_norm,
+            auto_approve=auto_approve,
+            permission_manager=permission_manager,
+            approval_callback=approval_callback,
+        )
 
     def _execute_action(action: dict) -> dict:
         at = str(action.get("type", "")).strip().lower()
@@ -1878,18 +1801,7 @@ def _process_input_auto_collect(
     return last_results
 
 
-def _truncate_lines(s: str, max_lines: int = 30) -> str:
-    lines = s.splitlines()
-    if len(lines) <= max_lines:
-        return s
-    shown = "\n".join(lines[:max_lines])
-    remain = len(lines) - max_lines
-    return shown + f"\n… +{remain} lines"
-
-
 def _render_tool_block(console, title: str, body: str = "", ok: bool = True) -> None:
-    from rich.text import Text
-
     dot_style = "green" if ok else "red"
     title_style = "white" if ok else "red"
 
@@ -2000,8 +1912,6 @@ def _process_input(agent: Agent, user_input: str) -> None:
         agent: Agent instance
         user_input: User's input string
     """
-    from rich.console import Console
-    from rich.markdown import Markdown
     from claude_code.interaction.parser import Parser
     from claude_code.core.context import ContextManager
 
@@ -2075,32 +1985,6 @@ def _process_input(agent: Agent, user_input: str) -> None:
     console.print()  # Blank line between turns
 
 
-def _extract_first_json_object(text: str) -> str:
-    s = text.strip()
-    if s.startswith("```"):
-        first_nl = s.find("\n")
-        if first_nl != -1:
-            s = s[first_nl + 1 :]
-        last_fence = s.rfind("```")
-        if last_fence != -1:
-            s = s[:last_fence]
-    s = s.strip()
-    start = None
-    for ch in ("{", "["):
-        idx = s.find(ch)
-        if idx != -1:
-            start = idx if start is None else min(start, idx)
-    if start is None:
-        return ""
-    s2 = s[start:]
-    end_obj = s2.rfind("}")
-    end_arr = s2.rfind("]")
-    end = max(end_obj, end_arr)
-    if end == -1:
-        return ""
-    return s2[: end + 1]
-
-
 def _parse_auto_actions(model_output: str) -> List[dict]:
     import json
 
@@ -2136,11 +2020,9 @@ def _process_input_auto(
     mode: str = "default",
     max_steps: int = 20,
 ) -> None:
-    from rich.console import Console
-    from rich.text import Text
     from claude_code.core.executor import CommandExecutor
     from claude_code.cli.filegen import detect_file_type, generate_validated, safe_write_text
-    from claude_code.security.permissions import PermissionDomain, PermissionStatus
+    from claude_code.security.permissions import PermissionDomain
 
     console = Console()
     approval = get_approval()
@@ -2159,65 +2041,14 @@ def _process_input_auto(
     }
 
     def _check(domain: PermissionDomain, target: str, ask_message: str) -> bool:
-        if mode_norm == "bypass":
-            try:
-                _LOGGER.info(
-                    "perm_check mode=%s domain=%s target=%s decision=ALLOW reason=bypass",
-                    mode_norm,
-                    getattr(domain, "value", str(domain)),
-                    target,
-                )
-            except Exception:
-                pass
-            return True
-        if auto_approve:
-            try:
-                _LOGGER.info(
-                    "perm_check mode=%s domain=%s target=%s decision=ALLOW reason=auto_approve",
-                    mode_norm,
-                    getattr(domain, "value", str(domain)),
-                    target,
-                )
-            except Exception:
-                pass
-            return True
-        if permission_manager is None:
-            # Backward-compatible behavior: ask
-            try:
-                _LOGGER.info(
-                    "perm_check mode=%s domain=%s target=%s decision=ASK reason=no_permission_manager",
-                    mode_norm,
-                    getattr(domain, "value", str(domain)),
-                    target,
-                )
-            except Exception:
-                pass
-            return approval.confirm(ask_message, default=False)
-        try:
-            res = permission_manager.check_permission(domain, target)
-        except Exception:
-            return approval.confirm(ask_message, default=False)
-
-        try:
-            rule = getattr(res, "matching_rule", None)
-            _LOGGER.info(
-                "perm_check mode=%s domain=%s target=%s status=%s action=%s rule=%s",
-                mode_norm,
-                getattr(domain, "value", str(domain)),
-                target,
-                getattr(getattr(res, "status", None), "value", str(getattr(res, "status", None))),
-                getattr(getattr(res, "action", None), "value", str(getattr(res, "action", None))),
-                getattr(rule, "pattern", None),
-            )
-        except Exception:
-            pass
-
-        if res.status == PermissionStatus.GRANTED:
-            return True
-        if res.status == PermissionStatus.DENIED:
-            return False
-        # PENDING -> ask
-        return approval.confirm(ask_message, default=False)
+        return _check_permission(
+            domain=domain,
+            target=target,
+            ask_message=ask_message,
+            mode=mode_norm,
+            auto_approve=auto_approve,
+            permission_manager=permission_manager,
+        )
 
     system_rules = (
         "You are operating in AUTO MODE.\n"
@@ -2405,214 +2236,6 @@ def _process_input_auto(
             return
 
         time.sleep(0.05)
-
-
-def _resolve_under_root(project_root: str, user_path: str) -> str:
-    base = Path(project_root).resolve()
-    p = Path(user_path)
-    if not p.is_absolute():
-        p = (base / p).resolve()
-    else:
-        p = p.resolve()
-    try:
-        p.relative_to(base)
-    except Exception:
-        raise ValueError(f"path escapes project_root: {user_path}")
-    return str(p)
-
-
-def _format_dir_listing(root: str, recursive: bool, max_entries: int) -> str:
-    root_p = Path(root)
-    if not root_p.exists():
-        return f"Error: directory not found: {root}"
-    if not root_p.is_dir():
-        return f"Error: not a directory: {root}"
-
-    items = []
-    if recursive:
-        for dirpath, dirnames, filenames in os.walk(root):
-            dirnames.sort()
-            filenames.sort()
-            for dn in dirnames:
-                items.append(str(Path(dirpath, dn)))
-                if len(items) >= max_entries:
-                    break
-            if len(items) >= max_entries:
-                break
-            for fn in filenames:
-                items.append(str(Path(dirpath, fn)))
-                if len(items) >= max_entries:
-                    break
-            if len(items) >= max_entries:
-                break
-    else:
-        for child in sorted(root_p.iterdir(), key=lambda x: x.name.lower()):
-            items.append(str(child))
-            if len(items) >= max_entries:
-                break
-
-    rel_items = []
-    base = root_p
-    for it in items:
-        try:
-            rel_items.append(str(Path(it).relative_to(base)))
-        except Exception:
-            rel_items.append(str(Path(it)))
-
-    suffix = "\n... (truncated)" if len(items) >= max_entries else ""
-    return "\n".join(rel_items) + suffix
-
-
-def _handle_local_command(agent: Agent, user_input: str, project_root: str) -> None:
-    from rich.console import Console
-    from rich.text import Text
-    from claude_code.cli.filegen import detect_file_type, generate_validated, safe_write_text
-
-    console = Console()
-    try:
-        # Windows-friendly: preserve backslashes in paths (e.g. ..\README.md)
-        parts = shlex.split(user_input, posix=False)
-    except Exception as e:
-        console.print(Text(f"Error parsing command: {e}", style="red"))
-        return
-
-    if not parts:
-        return
-
-    cmd = parts[0].lstrip("/").lower()
-    args = parts[1:]
-
-    if cmd in ("help", "?"):
-        console.print(
-            Text(
-                "Local commands: /mkdir PATH | /read-file PATH | /read-dir PATH [--recursive/--no-recursive] [--max N] | /write-file PATH -- CONTENT | /gen-file PATH [--type T] [--overwrite] [--max-attempts N] -- INSTRUCTION",
-                style="dim",
-            )
-        )
-        return
-
-    try:
-        if cmd == "mkdir":
-            if not args:
-                raise ValueError("mkdir requires PATH")
-            target = _resolve_under_root(project_root, args[0])
-            Path(target).mkdir(parents=True, exist_ok=True)
-            console.print(Text(f"OK: created {args[0]}", style="green"))
-            return
-
-        if cmd == "read-file":
-            if not args:
-                raise ValueError("read-file requires PATH")
-            target = _resolve_under_root(project_root, args[0])
-            p = Path(target)
-            if not p.exists() or not p.is_file():
-                raise ValueError(f"file not found: {args[0]}")
-            content = p.read_text(encoding="utf-8")
-            console.print(Text(content))
-            return
-
-        if cmd == "read-dir":
-            if not args:
-                raise ValueError("read-dir requires PATH")
-            recursive = True
-            max_entries = 200
-            path_arg = None
-            i = 0
-            while i < len(args):
-                a = args[i]
-                if a == "--recursive":
-                    recursive = True
-                elif a == "--no-recursive":
-                    recursive = False
-                elif a == "--max":
-                    i += 1
-                    if i >= len(args):
-                        raise ValueError("--max requires integer")
-                    max_entries = int(args[i])
-                else:
-                    if path_arg is None:
-                        path_arg = a
-                    else:
-                        raise ValueError(f"unexpected argument: {a}")
-                i += 1
-            if path_arg is None:
-                raise ValueError("read-dir requires PATH")
-            target = _resolve_under_root(project_root, path_arg)
-            listing = _format_dir_listing(target, recursive=recursive, max_entries=max_entries)
-            console.print(Text(listing))
-            return
-
-        if cmd == "write-file":
-            if not args:
-                raise ValueError("write-file requires PATH")
-            if "--" not in args:
-                raise ValueError("write-file requires -- CONTENT")
-            sep = args.index("--")
-            path_arg = args[0]
-            content = " ".join(args[sep + 1 :])
-            target = _resolve_under_root(project_root, path_arg)
-            safe_write_text(target, content + "\n", overwrite=True)
-            console.print(Text(f"OK: wrote {path_arg}", style="green"))
-            return
-
-        if cmd == "gen-file":
-            if not args:
-                raise ValueError("gen-file requires PATH")
-            if "--" not in args:
-                raise ValueError("gen-file requires -- INSTRUCTION")
-            sep = args.index("--")
-            pre = args[:sep]
-            instruction = " ".join(args[sep + 1 :]).strip()
-            if not instruction:
-                raise ValueError("gen-file instruction is empty")
-
-            path_arg = pre[0]
-            file_type = None
-            overwrite = False
-            max_attempts = 3
-            i = 1
-            while i < len(pre):
-                a = pre[i]
-                if a == "--type":
-                    i += 1
-                    if i >= len(pre):
-                        raise ValueError("--type requires value")
-                    file_type = pre[i]
-                elif a == "--overwrite":
-                    overwrite = True
-                elif a == "--max-attempts":
-                    i += 1
-                    if i >= len(pre):
-                        raise ValueError("--max-attempts requires integer")
-                    max_attempts = int(pre[i])
-                else:
-                    raise ValueError(f"unexpected argument: {a}")
-                i += 1
-
-            target = _resolve_under_root(project_root, path_arg)
-            ft = detect_file_type(target, file_type)
-
-            def _gen(prompt: str) -> str:
-                return agent.process(prompt).content
-
-            content, result = generate_validated(
-                generate_fn=_gen,
-                file_type=ft,
-                target_path=target,
-                instruction=instruction,
-                max_attempts=max_attempts,
-            )
-
-            if not result.ok:
-                raise ValueError(f"could not generate valid content: {result.error}")
-
-            safe_write_text(target, content, overwrite=overwrite)
-            console.print(Text(f"OK: generated {path_arg}", style="green"))
-            return
-
-        console.print(Text(f"Unknown local command: /{cmd} (try /help)", style="yellow"))
-    except Exception as e:
-        console.print(Text(f"Error: {e}", style="red"))
 
 
 class _Styles:
