@@ -69,14 +69,14 @@
 - **依赖**: T001, T002
 - **测试**: `tests/test_tool_edit.py` ✅ 22 passed
 
-### T007 - 实现 Bash 工具 `core/tools/bash.py`
-- [ ] 执行 shell 命令 (复用 `core/executor.py`)
-- [ ] 支持 `timeout` 参数
-- [ ] 支持 `working_dir` 参数
-- [ ] 危险命令检测 (rm -rf, etc.)
-- [ ] 权限检查集成
+### T007 - 实现 Bash 工具 `core/tools/bash.py` ✅
+- [x] 执行 shell 命令 (复用 `core/executor.py`)
+- [x] 支持 `timeout` 参数
+- [x] 支持 `working_dir` 参数
+- [x] 危险命令检测 (rm -rf, etc.)
+- [x] 权限检查集成
 - **依赖**: T001, T002
-- **测试**: `tests/test_tool_bash.py`
+- **测试**: `tests/test_tool_bash.py` ✅ 30 passed
 
 ### T008 - 实现 Glob 工具 `core/tools/glob.py`
 - [ ] 文件模式匹配搜索

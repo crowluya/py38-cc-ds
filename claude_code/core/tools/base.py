@@ -71,9 +71,15 @@ class ToolResult:
         return cls(tool_name=tool_name, success=True, output=output, metadata=metadata)
 
     @classmethod
-    def error_result(cls, tool_name: str, error: str, output: str = "") -> "ToolResult":
+    def error_result(
+        cls,
+        tool_name: str,
+        error: str,
+        output: str = "",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> "ToolResult":
         """Create an error result."""
-        return cls(tool_name=tool_name, success=False, output=output, error=error)
+        return cls(tool_name=tool_name, success=False, output=output, error=error, metadata=metadata)
 
 
 @dataclass
