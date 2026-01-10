@@ -1337,8 +1337,8 @@ def _run_prompt_toolkit_chat(
     def _footer_text() -> ANSI:
         gray = "\x1b[90m"
         reset = "\x1b[0m"
-        # UI-010: Updated keyboard shortcuts (Esc+Enter or Ctrl+J to submit)
-        return ANSI(f"{gray}PgUp/PgDn: scroll | Esc+Enter: send | Ctrl+O: expand | Ctrl+L: clear | Esc: cancel{reset}")
+        # UI-010: Updated keyboard shortcuts (Enter to submit)
+        return ANSI(f"{gray}PgUp/PgDn: scroll | Enter: send | Ctrl+L: clear | Esc: cancel{reset}")
 
     def _status_text() -> ANSI:
         if thinking["value"]:
@@ -1394,18 +1394,19 @@ def _run_prompt_toolkit_chat(
             _append_text(f"\x1b[31mError: {e}\x1b[0m\n")
         app.invalidate()
 
-    # UI-005 & UI-006: Multiline input buffer with dynamic height
+    # UI-005 & UI-006: Single-line input with auto-wrap for long content
     # CMD-006: Integrate file completion
+    # Enter submits, long content wraps visually
     from prompt_toolkit.layout.dimension import Dimension
     from deep_code.cli.completion import create_completer
 
     file_completer = create_completer(project_root=project_root)
-    input_buf = Buffer(multiline=True, accept_handler=_accept, history=InMemoryHistory(), completer=file_completer)
+    input_buf = Buffer(multiline=False, accept_handler=_accept, history=InMemoryHistory(), completer=file_completer)
     input_ctl = BufferControl(buffer=input_buf, focusable=True)
-    # Dynamic height: min 3 lines, max 10 lines, preferred 3
+    # Single line input, but wrap_lines=True allows visual wrapping for long input
     input_win = Window(
         content=input_ctl,
-        height=Dimension(min=3, max=10, preferred=3),
+        height=Dimension(min=1, max=5, preferred=1),
         dont_extend_height=False,
         wrap_lines=True,
     )
@@ -1636,16 +1637,6 @@ def _run_prompt_toolkit_chat(
 
         running["future"].add_done_callback(_on_done)
         return
-
-    # UI-007: Submit input (since Enter now inserts newline in multiline mode)
-    # Use Escape+Enter sequence or Ctrl+J (which is equivalent to Ctrl+Enter in many terminals)
-    @kb.add("escape", "enter")  # Escape then Enter to submit
-    @kb.add("c-j")  # Ctrl+J as alternative (Ctrl+Enter sends this in some terminals)
-    def _(event) -> None:
-        # Submit the input
-        buf = event.current_buffer
-        if buf.text.strip():
-            buf.validate_and_handle()
 
     # UI-002: Page Up/Down for scrolling output
     @kb.add("pageup")
