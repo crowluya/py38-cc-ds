@@ -78,14 +78,14 @@
 - **依赖**: T001, T002
 - **测试**: `tests/test_tool_bash.py` ✅ 30 passed
 
-### T008 - 实现 Glob 工具 `core/tools/glob.py`
-- [ ] 文件模式匹配搜索
-- [ ] 支持 `pattern` 参数 (如 `**/*.py`)
-- [ ] 支持 `path` 参数 (搜索根目录)
-- [ ] 返回匹配文件列表 (按修改时间排序)
-- [ ] 限制返回数量
+### T008 - 实现 Glob 工具 `core/tools/glob.py` ✅
+- [x] 文件模式匹配搜索
+- [x] 支持 `pattern` 参数 (如 `**/*.py`)
+- [x] 支持 `path` 参数 (搜索根目录)
+- [x] 返回匹配文件列表 (按修改时间排序)
+- [x] 限制返回数量
 - **依赖**: T001, T002
-- **测试**: `tests/test_tool_glob.py`
+- **测试**: `tests/test_tool_glob.py` ✅ 20 passed
 
 ### T009 - 实现 Grep 工具 `core/tools/grep.py`
 - [ ] 内容搜索 (正则表达式)
