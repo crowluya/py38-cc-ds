@@ -147,13 +147,13 @@
 - **依赖**: T001, T002
 - **测试**: `tests/test_tool_todo.py` ✅ 18 passed
 
-### T014 - 实现 Task 工具 (子代理) `core/tools/task.py`
-- [ ] 启动子代理执行复杂任务
-- [ ] 支持不同 agent 类型 (Explore, Plan, Bash 等)
-- [ ] 子代理结果汇总
-- [ ] 支持后台运行
+### T014 - 实现 Task 工具 (子代理) `core/tools/task.py` ✅
+- [x] 启动子代理执行复杂任务
+- [x] 支持不同 agent 类型 (Explore, Plan, Bash 等)
+- [x] 子代理结果汇总
+- [x] 支持后台运行
 - **依赖**: T011
-- **测试**: `tests/test_tool_task.py`
+- **测试**: `tests/test_tool_task.py` ✅ 17 passed
 
 ### T015 - 实现 MCP 基础框架 `extensions/mcp/`
 - [ ] MCP 协议解析
