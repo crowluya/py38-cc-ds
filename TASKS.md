@@ -51,14 +51,14 @@
 - **依赖**: T001, T002
 - **测试**: `tests/test_tool_read.py` ✅ 22 passed
 
-### T005 - 实现 Write 工具 `core/tools/write.py`
-- [ ] 写入文件内容
-- [ ] 自动创建父目录
-- [ ] 支持 `overwrite` 参数
-- [ ] 路径安全检查
-- [ ] 权限检查集成
+### T005 - 实现 Write 工具 `core/tools/write.py` ✅
+- [x] 写入文件内容
+- [x] 自动创建父目录
+- [x] 支持 `overwrite` 参数
+- [x] 路径安全检查
+- [x] 权限检查集成
 - **依赖**: T001, T002
-- **测试**: `tests/test_tool_write.py`
+- **测试**: `tests/test_tool_write.py` ✅ 16 passed
 
 ### T006 - 实现 Edit 工具 `core/tools/edit.py`
 - [ ] 基于 `old_string` -> `new_string` 的精确替换
