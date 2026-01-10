@@ -167,12 +167,12 @@
 
 ## Phase 5: 集成与优化
 
-### T016 - 权限系统集成
-- [ ] 所有工具集成权限检查
-- [ ] 工具级别的 allow/deny 规则
-- [ ] 危险操作二次确认
+### T016 - 权限系统集成 ✅
+- [x] 所有工具集成权限检查
+- [x] 工具级别的 allow/deny 规则
+- [x] 危险操作二次确认
 - **依赖**: T004-T009
-- **测试**: `tests/test_tools_permissions.py`
+- **测试**: `tests/test_tools_permissions.py` ✅ 26 passed
 
 ### T017 - 错误处理优化
 - [ ] 统一错误格式
