@@ -1057,21 +1057,28 @@ def _run_prompt_toolkit_chat(
         return ANSI(s)
 
     def _refresh_output() -> None:
-        # Best-effort auto scroll to bottom.
+        # UI-004: Auto scroll to bottom only if auto_scroll is enabled
         try:
             text = "".join([b.render() for b in blocks])
             total_lines = max(1, text.count("\n"))
             size = app.output.get_size()
-            # header(10)+status(1)+seps/prompt/footer(1+1+1+1)=15 approx
-            visible = max(5, size.rows - 15)
-            output_win.vertical_scroll = max(0, total_lines - visible)
+            # header(10)+status(1)+seps/prompt/footer(1+1+3+1+1)=18 approx for multiline input
+            visible = max(5, size.rows - 18)
+
+            if scroll_state["auto_scroll"]:
+                # Auto scroll to bottom
+                output_win.vertical_scroll = max(0, total_lines - visible)
+            else:
+                # Keep manual scroll position
+                output_win.vertical_scroll = scroll_state["manual_offset"]
         except Exception:
             pass
 
     def _footer_text() -> ANSI:
         gray = "\x1b[90m"
         reset = "\x1b[0m"
-        return ANSI(f"{gray}? for shortcuts    Ctrl+O: expand/collapse last tool block{reset}")
+        # UI-010: Updated keyboard shortcuts
+        return ANSI(f"{gray}PgUp/PgDn: scroll | Ctrl+Enter: send | Ctrl+O: expand | Ctrl+L: clear | Esc: cancel/exit{reset}")
 
     def _status_text() -> ANSI:
         if thinking["value"]:
@@ -1084,7 +1091,15 @@ def _run_prompt_toolkit_chat(
     status_ctl = FormattedTextControl(text=_status_text)
 
     header_win = Window(content=header_ctl, height=10, dont_extend_height=True)
-    output_win = Window(content=output_ctl, wrap_lines=False, always_hide_cursor=True)
+    # UI-001: Configure output_win for scrolling
+    # Track scroll state: auto_scroll=True means follow new content
+    scroll_state = {"auto_scroll": True, "manual_offset": 0}
+    output_win = Window(
+        content=output_ctl,
+        wrap_lines=False,
+        always_hide_cursor=True,
+        allow_scroll_beyond_bottom=True,
+    )
     status_win = Window(content=status_ctl, height=1, dont_extend_height=True)
     footer_win = Window(content=footer_ctl, height=1, dont_extend_height=True)
 
@@ -1109,6 +1124,8 @@ def _run_prompt_toolkit_chat(
                 pass
         buf.document = Document(text="", cursor_position=0)
         input_state["last_text"] = text
+        # UI-004: Re-enable auto scroll when user submits input
+        scroll_state["auto_scroll"] = True
         try:
             _handle_user_line(text)
         except EOFError:
@@ -1117,9 +1134,17 @@ def _run_prompt_toolkit_chat(
             _append_text(f"\x1b[31mError: {e}\x1b[0m\n")
         app.invalidate()
 
-    input_buf = Buffer(multiline=False, accept_handler=_accept, history=InMemoryHistory())
+    # UI-005 & UI-006: Multiline input buffer with dynamic height
+    from prompt_toolkit.layout.dimension import Dimension
+    input_buf = Buffer(multiline=True, accept_handler=_accept, history=InMemoryHistory())
     input_ctl = BufferControl(buffer=input_buf, focusable=True)
-    input_win = Window(content=input_ctl, height=1, dont_extend_height=True)
+    # Dynamic height: min 3 lines, max 10 lines, preferred 3
+    input_win = Window(
+        content=input_ctl,
+        height=Dimension(min=3, max=10, preferred=3),
+        dont_extend_height=False,
+        wrap_lines=True,
+    )
 
     def _input_sep_text() -> ANSI:
         orange = "\x1b[38;5;208m"
@@ -1137,7 +1162,11 @@ def _run_prompt_toolkit_chat(
             output_win,
             status_win,
             input_sep_win_top,
-            VSplit([Window(prompt_ctl, width=len("> [default] ")), input_win]),
+            # UI-006: Prompt on top, multiline input below
+            HSplit([
+                Window(prompt_ctl, height=1, dont_extend_height=True),
+                input_win,
+            ]),
             input_sep_win_bottom,
             footer_win,
         ]
@@ -1327,6 +1356,94 @@ def _run_prompt_toolkit_chat(
         running["future"].add_done_callback(_on_done)
         return
 
+    # UI-007: Ctrl+Enter to submit (since Enter now inserts newline in multiline mode)
+    @kb.add("c-enter")
+    @kb.add("escape", "enter")  # Alt+Enter alternative
+    def _(event) -> None:
+        # Submit the input
+        buf = event.current_buffer
+        if buf.text.strip():
+            buf.validate_and_handle()
+
+    # UI-002: Page Up/Down for scrolling output
+    @kb.add("pageup")
+    def _(event) -> None:
+        try:
+            text = "".join([b.render() for b in blocks])
+            total_lines = max(1, text.count("\n"))
+            size = event.app.output.get_size()
+            visible = max(5, size.rows - 18)
+            scroll_amount = max(1, visible - 2)
+
+            # Disable auto scroll when user manually scrolls
+            scroll_state["auto_scroll"] = False
+            new_scroll = max(0, output_win.vertical_scroll - scroll_amount)
+            output_win.vertical_scroll = new_scroll
+            scroll_state["manual_offset"] = new_scroll
+            event.app.invalidate()
+        except Exception:
+            pass
+
+    @kb.add("pagedown")
+    def _(event) -> None:
+        try:
+            text = "".join([b.render() for b in blocks])
+            total_lines = max(1, text.count("\n"))
+            size = event.app.output.get_size()
+            visible = max(5, size.rows - 18)
+            scroll_amount = max(1, visible - 2)
+            max_scroll = max(0, total_lines - visible)
+
+            # Disable auto scroll when user manually scrolls
+            scroll_state["auto_scroll"] = False
+            new_scroll = min(max_scroll, output_win.vertical_scroll + scroll_amount)
+            output_win.vertical_scroll = new_scroll
+            scroll_state["manual_offset"] = new_scroll
+
+            # Re-enable auto scroll if at bottom
+            if new_scroll >= max_scroll:
+                scroll_state["auto_scroll"] = True
+
+            event.app.invalidate()
+        except Exception:
+            pass
+
+    # UI-003: Ctrl+Home/End for jumping to top/bottom
+    @kb.add("c-home")
+    def _(event) -> None:
+        try:
+            scroll_state["auto_scroll"] = False
+            output_win.vertical_scroll = 0
+            scroll_state["manual_offset"] = 0
+            event.app.invalidate()
+        except Exception:
+            pass
+
+    @kb.add("c-end")
+    def _(event) -> None:
+        try:
+            text = "".join([b.render() for b in blocks])
+            total_lines = max(1, text.count("\n"))
+            size = event.app.output.get_size()
+            visible = max(5, size.rows - 18)
+            max_scroll = max(0, total_lines - visible)
+
+            scroll_state["auto_scroll"] = True
+            output_win.vertical_scroll = max_scroll
+            scroll_state["manual_offset"] = max_scroll
+            event.app.invalidate()
+        except Exception:
+            pass
+
+    # UI-008: Ctrl+L to clear screen
+    @kb.add("c-l")
+    def _(event) -> None:
+        blocks.clear()
+        scroll_state["auto_scroll"] = True
+        scroll_state["manual_offset"] = 0
+        output_win.vertical_scroll = 0
+        event.app.invalidate()
+
     @kb.add("c-o")
     def _(event) -> None:
         # Toggle last foldable block
@@ -1459,7 +1576,8 @@ def _run_prompt_toolkit_chat(
         }
     )
 
-    app = Application(layout=Layout(container), key_bindings=kb, full_screen=True, style=style)
+    # UI-009: Enable mouse support for scrolling
+    app = Application(layout=Layout(container), key_bindings=kb, full_screen=True, style=style, mouse_support=True)
 
     # Always keep focus on the input buffer so IME tracks cursor.
     try:
