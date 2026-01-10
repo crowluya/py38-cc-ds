@@ -87,14 +87,14 @@
 - **依赖**: T001, T002
 - **测试**: `tests/test_tool_glob.py` ✅ 20 passed
 
-### T009 - 实现 Grep 工具 `core/tools/grep.py`
-- [ ] 内容搜索 (正则表达式)
-- [ ] 支持 `pattern`, `path`, `glob` 参数
-- [ ] 支持 `-A`, `-B`, `-C` 上下文行
-- [ ] 支持 `output_mode`: content/files_with_matches/count
-- [ ] 限制返回数量
+### T009 - 实现 Grep 工具 `core/tools/grep.py` ✅
+- [x] 内容搜索 (正则表达式)
+- [x] 支持 `pattern`, `path`, `glob` 参数
+- [x] 支持 `-A`, `-B`, `-C` 上下文行
+- [x] 支持 `output_mode`: content/files_with_matches/count
+- [x] 限制返回数量
 - **依赖**: T001, T002
-- **测试**: `tests/test_tool_grep.py`
+- **测试**: `tests/test_tool_grep.py` ✅ 24 passed
 
 ---
 
