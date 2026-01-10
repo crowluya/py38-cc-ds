@@ -155,13 +155,13 @@
 - **依赖**: T011
 - **测试**: `tests/test_tool_task.py` ✅ 17 passed
 
-### T015 - 实现 MCP 基础框架 `extensions/mcp/`
-- [ ] MCP 协议解析
-- [ ] 工具服务器连接
-- [ ] 动态工具注册
-- [ ] 配置文件支持
+### T015 - 实现 MCP 基础框架 `extensions/mcp/` ✅
+- [x] MCP 协议解析
+- [x] 工具服务器连接
+- [x] 动态工具注册
+- [x] 配置文件支持
 - **依赖**: T002
-- **测试**: `tests/test_mcp.py`
+- **测试**: `tests/test_mcp.py` ✅ 33 passed
 
 ---
 

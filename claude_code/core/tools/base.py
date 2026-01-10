@@ -18,6 +18,7 @@ class ToolCategory(Enum):
     SEARCH = "search"       # Grep, Glob
     AGENT = "agent"         # Task, subagents
     UTILITY = "utility"     # Todo, etc.
+    MCP = "mcp"             # MCP server tools
 
 
 @dataclass
