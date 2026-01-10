@@ -202,14 +202,14 @@
 - **测试**: `tests/test_ocr_engine.py` ✅ 26 passed
 - **依赖包**: paddlepaddle==2.4.2, paddleocr==2.6.1.3
 
-### T020 - ReadImage 工具 `core/tools/ocr.py`
-- [ ] ReadImage 工具实现
-- [ ] 支持文件路径输入
-- [ ] 支持 PNG, JPG, BMP 格式
-- [ ] 结果缓存集成
-- [ ] 错误处理 (文件不存在、格式不支持)
+### T020 - ReadImage 工具 `core/tools/ocr.py` ✅
+- [x] ReadImage 工具实现
+- [x] 支持文件路径输入
+- [x] 支持 PNG, JPG, BMP 格式
+- [x] 结果缓存集成
+- [x] 错误处理 (文件不存在、格式不支持)
 - **依赖**: T019, T018 (缓存)
-- **测试**: `tests/test_tool_ocr.py`
+- **测试**: `tests/test_tool_ocr.py` ✅ 26 passed
 
 ---
 
