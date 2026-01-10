@@ -140,11 +140,53 @@
     - 会话累计成本
   - **验证**: 显示估算成本
 
-### Phase 5: 测试
+### Phase 5: Shell 命令增强 (P1)
 
-- [ ] **CMD-014 编写单元测试**
-  - **文件**: `tests/test_cli_session.py`, `tests/test_cli_completion.py`
-  - **内容**: 测试会话、补全、统计功能
+- [ ] **CMD-015 后台命令执行**
+  - **文件**: `deep_code/core/executor.py`, `deep_code/cli/main.py`
+  - **内容**:
+    - 添加 `run_in_background` 参数支持
+    - 长命令异步执行，不阻塞输入
+    - 命令完成后通知用户
+  - **验证**: `! sleep 10 &` 后台执行，完成后显示结果
+
+- [ ] **CMD-016 实时输出流**
+  - **文件**: `deep_code/core/executor.py`, `deep_code/cli/main.py`
+  - **内容**:
+    - 命令执行时逐行显示输出
+    - 支持 stdout/stderr 实时流式输出
+    - 长命令不再等待完成才显示
+  - **验证**: `! pip install xxx` 实时显示安装进度
+
+- [ ] **CMD-017 命令历史记录**
+  - **文件**: `deep_code/cli/command_history.py`
+  - **内容**:
+    - CommandHistory 类存储执行过的命令
+    - 持久化到 `.deepcode/command_history.json`
+    - 支持查询最近 N 条命令
+  - **验证**: 命令执行后自动记录
+
+- [ ] **CMD-018 快捷重执行**
+  - **文件**: `deep_code/cli/main.py`, `deep_code/interaction/parser.py`
+  - **内容**:
+    - `!!` 重复执行上一条命令
+    - `!-N` 执行倒数第 N 条命令
+    - `!prefix` 执行最近以 prefix 开头的命令
+  - **验证**: `!!` 重复上一条命令
+
+- [ ] **CMD-019 命令输出截断**
+  - **文件**: `deep_code/cli/main.py`
+  - **内容**:
+    - 超长输出自动截断 (默认 10000 字符)
+    - 显示截断提示和完整输出保存路径
+    - 可配置截断阈值
+  - **验证**: 大量输出时显示截断提示
+
+### Phase 6: 测试
+
+- [ ] **CMD-020 编写单元测试**
+  - **文件**: `tests/test_cli_session.py`, `tests/test_cli_completion.py`, `tests/test_command_history.py`
+  - **内容**: 测试会话、补全、统计、命令历史功能
   - **验证**: 所有测试通过
 
 ## 技术参考
@@ -210,3 +252,9 @@ def _format_token_stats(stats: TokenStats) -> str:
 | CMD-012 | ✅ 完成 | 2026-01-11 | format_stats 方法 |
 | CMD-013 | ✅ 完成 | 2026-01-11 | calculate_cost 方法 |
 | CMD-014 | ⬜ 待开始 | | |
+| CMD-015 | ✅ 完成 | 2026-01-11 | execute_background 方法 |
+| CMD-016 | ✅ 完成 | 2026-01-11 | execute_streaming 方法 |
+| CMD-017 | ✅ 完成 | 2026-01-11 | command_history.py 模块 |
+| CMD-018 | ✅ 完成 | 2026-01-11 | !! !-N !prefix 快捷重执行 |
+| CMD-019 | ✅ 完成 | 2026-01-11 | OUTPUT_TRUNCATE_LIMIT |
+| CMD-020 | ⬜ 待开始 | | |

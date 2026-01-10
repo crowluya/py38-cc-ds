@@ -12,14 +12,18 @@ Executes shell commands with:
 - Environment variable support
 - Timeout support
 - Permission checking (T071)
+- Background execution (CMD-015)
+- Streaming output (CMD-016)
 """
 
 import os
 import shlex
 import subprocess
 import sys
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple
+import threading
+import queue
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 
 # Optional type hints for permission system
 try:
@@ -67,6 +71,34 @@ class CommandResult:
         """String representation."""
         status = "success" if self.success else "failed"
         return f"CommandResult({self.command}, return_code={self.return_code}, {status})"
+
+
+@dataclass
+class BackgroundCommand:
+    """A command running in the background (CMD-015)."""
+
+    command: str
+    process: subprocess.Popen
+    thread: threading.Thread
+    result_queue: queue.Queue
+    started_at: float = field(default_factory=lambda: __import__("time").time())
+    completed: bool = False
+    result: Optional[CommandResult] = None
+
+    def is_running(self) -> bool:
+        """Check if command is still running."""
+        return self.process.poll() is None
+
+    def get_result(self, timeout: Optional[float] = None) -> Optional[CommandResult]:
+        """Get result if available."""
+        if self.result is not None:
+            return self.result
+        try:
+            self.result = self.result_queue.get(block=True, timeout=timeout)
+            self.completed = True
+            return self.result
+        except queue.Empty:
+            return None
 
 
 class CommandExecutor:
@@ -345,6 +377,188 @@ class CommandExecutor:
         except UnicodeDecodeError:
             # Last resort: replace errors
             return output.decode("utf-8", errors="replace")
+
+    # CMD-015: Background execution
+    def execute_background(
+        self,
+        command: str,
+        working_dir: Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
+        on_complete: Optional[Callable[[CommandResult], None]] = None,
+    ) -> BackgroundCommand:
+        """
+        Execute a command in the background.
+
+        Args:
+            command: Command to execute
+            working_dir: Working directory
+            env: Environment variables
+            on_complete: Callback when command completes
+
+        Returns:
+            BackgroundCommand object to track execution
+        """
+        shell_cmd, shell_args = self._build_shell_command(command, [])
+
+        process_env = os.environ.copy()
+        if env:
+            process_env.update(env)
+
+        cwd = working_dir or os.getcwd()
+
+        result_queue: queue.Queue = queue.Queue()
+
+        proc = subprocess.Popen(
+            shell_args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=cwd,
+            env=process_env,
+            universal_newlines=False,
+        )
+
+        def _wait_for_completion() -> None:
+            stdout_bytes, stderr_bytes = proc.communicate()
+            stdout = self._decode_output(stdout_bytes)
+            stderr = self._decode_output(stderr_bytes)
+
+            result = CommandResult(
+                command=command,
+                return_code=proc.returncode,
+                stdout=stdout,
+                stderr=stderr,
+                timed_out=False,
+            )
+            result_queue.put(result)
+
+            if on_complete:
+                on_complete(result)
+
+        thread = threading.Thread(target=_wait_for_completion, daemon=True)
+        thread.start()
+
+        return BackgroundCommand(
+            command=command,
+            process=proc,
+            thread=thread,
+            result_queue=result_queue,
+        )
+
+    # CMD-016: Streaming output
+    def execute_streaming(
+        self,
+        command: str,
+        working_dir: Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
+        timeout: Optional[int] = None,
+    ) -> Generator[Tuple[str, str], None, CommandResult]:
+        """
+        Execute a command with streaming output.
+
+        Yields (stream_type, line) tuples where stream_type is 'stdout' or 'stderr'.
+        Returns CommandResult when complete.
+
+        Args:
+            command: Command to execute
+            working_dir: Working directory
+            env: Environment variables
+            timeout: Timeout in seconds
+
+        Yields:
+            Tuple of (stream_type, line)
+
+        Returns:
+            CommandResult with execution details
+        """
+        import select
+        import time
+
+        shell_cmd, shell_args = self._build_shell_command(command, [])
+
+        process_env = os.environ.copy()
+        if env:
+            process_env.update(env)
+
+        cwd = working_dir or os.getcwd()
+        timeout_val = timeout if timeout is not None else self._default_timeout
+
+        proc = subprocess.Popen(
+            shell_args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=cwd,
+            env=process_env,
+            universal_newlines=False,
+        )
+
+        stdout_lines: List[str] = []
+        stderr_lines: List[str] = []
+        start_time = time.time()
+        timed_out = False
+
+        # Set non-blocking mode on Unix
+        if sys.platform != "win32":
+            import fcntl
+            for fd in [proc.stdout, proc.stderr]:
+                if fd:
+                    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+                    fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+
+        try:
+            while proc.poll() is None:
+                # Check timeout
+                if time.time() - start_time > timeout_val:
+                    proc.kill()
+                    timed_out = True
+                    break
+
+                if sys.platform != "win32":
+                    # Unix: use select for non-blocking read
+                    readable, _, _ = select.select(
+                        [proc.stdout, proc.stderr], [], [], 0.1
+                    )
+
+                    for stream in readable:
+                        line_bytes = stream.readline()
+                        if line_bytes:
+                            line = self._decode_output(line_bytes).rstrip("\n\r")
+                            if stream == proc.stdout:
+                                stdout_lines.append(line)
+                                yield ("stdout", line)
+                            else:
+                                stderr_lines.append(line)
+                                yield ("stderr", line)
+                else:
+                    # Windows: simple polling (less efficient)
+                    time.sleep(0.1)
+
+            # Read remaining output
+            if proc.stdout:
+                remaining_stdout = proc.stdout.read()
+                if remaining_stdout:
+                    for line in self._decode_output(remaining_stdout).splitlines():
+                        stdout_lines.append(line)
+                        yield ("stdout", line)
+
+            if proc.stderr:
+                remaining_stderr = proc.stderr.read()
+                if remaining_stderr:
+                    for line in self._decode_output(remaining_stderr).splitlines():
+                        stderr_lines.append(line)
+                        yield ("stderr", line)
+
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+
+        return CommandResult(
+            command=command,
+            return_code=proc.returncode if proc.returncode is not None else -1,
+            stdout="\n".join(stdout_lines),
+            stderr="\n".join(stderr_lines),
+            timed_out=timed_out,
+        )
 
 
 # Convenience function

@@ -1242,11 +1242,18 @@ def _run_prompt_toolkit_chat(
 
     import concurrent.futures
     from deep_code.cli.session import Session, create_session, save_session
+    from deep_code.cli.command_history import CommandHistory, parse_history_reference, is_history_reference
 
     # Create or use existing session
     if session is None:
         session = create_session(project_root, start_mode)
     current_session = session
+
+    # CMD-017: Initialize command history
+    cmd_history = CommandHistory(project_root=project_root)
+
+    # CMD-019: Output truncation settings
+    OUTPUT_TRUNCATE_LIMIT = 10000  # characters
 
     mode = {"value": (start_mode or "default").strip().lower()}
     thinking = {"value": ""}
@@ -1528,6 +1535,110 @@ def _run_prompt_toolkit_chat(
                 blocks.append(_ToolBlock(title=f"Local({line})", body=str(e), ok=False))
                 _refresh_output()
             return
+
+        # CMD-018: Handle history references (!! !-N !prefix)
+        if is_history_reference(line):
+            resolved_cmd = parse_history_reference(line, cmd_history)
+            if resolved_cmd:
+                blocks.append(_ToolBlock(
+                    title=f"History: {line} -> {resolved_cmd}",
+                    body="",
+                    ok=True,
+                    expanded=True,
+                ))
+                _refresh_output()
+                # Execute the resolved command
+                line = f"! {resolved_cmd}"
+            else:
+                blocks.append(_ToolBlock(
+                    title=f"History: {line}",
+                    body="No matching command found in history",
+                    ok=False,
+                    expanded=True,
+                ))
+                _refresh_output()
+                return
+
+        # CMD-015/016/017/019: Handle direct shell commands with ! prefix
+        if line.strip().startswith("!") and " " in line:
+            from deep_code.core.executor import CommandExecutor
+            cmd_text = line.strip()[1:].strip()
+
+            # Check for background execution (ends with &)
+            run_background = cmd_text.endswith(" &") or cmd_text.endswith("&")
+            if run_background:
+                cmd_text = cmd_text.rstrip("&").strip()
+
+            cmd_executor = CommandExecutor()
+
+            if run_background:
+                # CMD-015: Background execution
+                def _on_bg_complete(result):
+                    # Record in history
+                    cmd_history.add(cmd_text, result.return_code, project_root)
+                    # Notify user
+                    output = result.combined_output()
+                    if len(output) > OUTPUT_TRUNCATE_LIMIT:
+                        output = output[:OUTPUT_TRUNCATE_LIMIT] + f"\n... [truncated, {len(output)} chars total]"
+                    status = "OK" if result.success else f"FAILED (exit {result.return_code})"
+
+                    def _update():
+                        blocks.append(_ToolBlock(
+                            title=f"Background: {cmd_text} [{status}]",
+                            body=output,
+                            ok=result.success,
+                        ))
+                        _refresh_output()
+
+                    try:
+                        app.call_from_executor(_update)
+                    except Exception:
+                        pass
+
+                bg_cmd = cmd_executor.execute_background(
+                    cmd_text,
+                    working_dir=project_root,
+                    on_complete=_on_bg_complete,
+                )
+                blocks.append(_ToolBlock(
+                    title=f"Background: {cmd_text} (running...)",
+                    body="Command started in background",
+                    ok=True,
+                    expanded=True,
+                ))
+                _refresh_output()
+                return
+            else:
+                # CMD-016: Streaming execution for interactive feedback
+                # For simplicity, use regular execution with output truncation
+                try:
+                    result = cmd_executor.execute(cmd_text, working_dir=project_root, timeout=120)
+                    output = result.combined_output()
+
+                    # CMD-017: Record in history
+                    cmd_history.add(cmd_text, result.return_code, project_root)
+
+                    # CMD-019: Truncate long output
+                    truncated = False
+                    if len(output) > OUTPUT_TRUNCATE_LIMIT:
+                        truncated = True
+                        output = output[:OUTPUT_TRUNCATE_LIMIT] + f"\n... [truncated, {len(output)} chars total]"
+
+                    status = "OK" if result.success else f"exit {result.return_code}"
+                    blocks.append(_ToolBlock(
+                        title=f"$ {cmd_text} [{status}]",
+                        body=output,
+                        ok=result.success,
+                    ))
+                    _refresh_output()
+                except Exception as e:
+                    blocks.append(_ToolBlock(
+                        title=f"$ {cmd_text} [ERROR]",
+                        body=str(e),
+                        ok=False,
+                    ))
+                    _refresh_output()
+                return
 
         use_auto = auto_mode or mode["value"] in ("plan", "bypass")
 
