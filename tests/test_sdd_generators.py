@@ -7,8 +7,8 @@ Tests for T111: 从spec.md生成plan.md的工作流
 from typing import Dict
 import pytest
 
-from claude_code.llm.client import LLMClient
-from claude_code.sdd.generator import PlanGenerator
+from deep_code.llm.client import LLMClient
+from deep_code.sdd.generator import PlanGenerator
 
 
 class FakeLLMClient(LLMClient):
@@ -174,7 +174,7 @@ class TestPlanGenerator:
 ### 3.1 目录结构
 
 ```
-claude_code/
+deep_code/
 ├── core/
 └── cli/
 ```
@@ -348,7 +348,7 @@ Message = Dict[str, str]
 ### 目录结构
 
 ```
-claude_code/
+deep_code/
 ├── core/
 └── interaction/
 ```

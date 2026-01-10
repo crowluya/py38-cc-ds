@@ -11,7 +11,7 @@ from click.testing import CliRunner
 
 def test_cli_write_file_command_exists() -> None:
     """验证 write-file 子命令存在"""
-    from claude_code.cli.main import cli
+    from deep_code.cli.main import cli
 
     runner = CliRunner()
     result = runner.invoke(cli, ["write-file", "--help"])
@@ -23,7 +23,7 @@ def test_cli_write_file_command_exists() -> None:
 def test_write_file_sanitizes_requirements(monkeypatch) -> None:
     """验证 requirements 输出会被清洗为可被 pip 解析的内容"""
 
-    from claude_code.cli.main import cli
+    from deep_code.cli.main import cli
 
     class DummyTurn:
         def __init__(self, content: str):
@@ -46,8 +46,8 @@ def test_write_file_sanitizes_requirements(monkeypatch) -> None:
             )
 
     # Patch LLM creation path so no network is used
-    monkeypatch.setattr("claude_code.cli.main.create_llm_client", lambda _settings: object())
-    monkeypatch.setattr("claude_code.cli.main.Agent", DummyAgent)
+    monkeypatch.setattr("deep_code.cli.main.create_llm_client", lambda _settings: object())
+    monkeypatch.setattr("deep_code.cli.main.Agent", DummyAgent)
 
     runner = CliRunner()
     with runner.isolated_filesystem():

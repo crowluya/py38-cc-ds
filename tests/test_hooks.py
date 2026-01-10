@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from claude_code.interaction.hooks import (
+from deep_code.interaction.hooks import (
     HookEvent,
     HookMatcher,
     HookScript,

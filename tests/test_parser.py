@@ -6,7 +6,7 @@ TDD: 测试先行
 
 import pytest
 
-from claude_code.interaction.parser import (
+from deep_code.interaction.parser import (
     CommandReference,
     DirectoryReference,
     FileReference,

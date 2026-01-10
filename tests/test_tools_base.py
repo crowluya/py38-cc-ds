@@ -5,7 +5,7 @@ Python 3.8.10 compatible
 """
 
 import pytest
-from claude_code.core.tools.base import (
+from deep_code.core.tools.base import (
     Tool,
     ToolCall,
     ToolCategory,

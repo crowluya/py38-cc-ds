@@ -8,7 +8,7 @@ from typing import Any, List
 
 import pytest
 
-from claude_code.cli.approval import Approval, get_approval
+from deep_code.cli.approval import Approval, get_approval
 
 
 def test_approval_create() -> None:

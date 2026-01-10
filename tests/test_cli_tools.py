@@ -8,8 +8,8 @@ import pytest
 from typing import Any, Dict, List, Optional
 from unittest.mock import Mock, MagicMock, patch
 
-from claude_code.cli.models import ToolBlock
-from claude_code.core.tools.base import ToolCall, ToolResult
+from deep_code.cli.models import ToolBlock
+from deep_code.core.tools.base import ToolCall, ToolResult
 
 
 class TestToolBlock:
@@ -88,7 +88,7 @@ class TestToolCallFormatting:
 
     def test_format_tool_call_read(self):
         """Test formatting Read tool call."""
-        from claude_code.cli.tool_display import format_tool_call_title
+        from deep_code.cli.tool_display import format_tool_call_title
 
         tool_call = ToolCall(
             id="call_1",
@@ -102,7 +102,7 @@ class TestToolCallFormatting:
 
     def test_format_tool_call_write(self):
         """Test formatting Write tool call."""
-        from claude_code.cli.tool_display import format_tool_call_title
+        from deep_code.cli.tool_display import format_tool_call_title
 
         tool_call = ToolCall(
             id="call_2",
@@ -116,7 +116,7 @@ class TestToolCallFormatting:
 
     def test_format_tool_call_bash(self):
         """Test formatting Bash tool call."""
-        from claude_code.cli.tool_display import format_tool_call_title
+        from deep_code.cli.tool_display import format_tool_call_title
 
         tool_call = ToolCall(
             id="call_3",
@@ -130,7 +130,7 @@ class TestToolCallFormatting:
 
     def test_format_tool_call_glob(self):
         """Test formatting Glob tool call."""
-        from claude_code.cli.tool_display import format_tool_call_title
+        from deep_code.cli.tool_display import format_tool_call_title
 
         tool_call = ToolCall(
             id="call_4",
@@ -144,7 +144,7 @@ class TestToolCallFormatting:
 
     def test_format_tool_call_grep(self):
         """Test formatting Grep tool call."""
-        from claude_code.cli.tool_display import format_tool_call_title
+        from deep_code.cli.tool_display import format_tool_call_title
 
         tool_call = ToolCall(
             id="call_5",
@@ -158,7 +158,7 @@ class TestToolCallFormatting:
 
     def test_format_tool_call_edit(self):
         """Test formatting Edit tool call."""
-        from claude_code.cli.tool_display import format_tool_call_title
+        from deep_code.cli.tool_display import format_tool_call_title
 
         tool_call = ToolCall(
             id="call_6",
@@ -180,7 +180,7 @@ class TestToolResultFormatting:
 
     def test_format_tool_result_success(self):
         """Test formatting successful tool result."""
-        from claude_code.cli.tool_display import format_tool_result_body
+        from deep_code.cli.tool_display import format_tool_result_body
 
         result = ToolResult.success_result(
             "Read",
@@ -192,7 +192,7 @@ class TestToolResultFormatting:
 
     def test_format_tool_result_error(self):
         """Test formatting error tool result."""
-        from claude_code.cli.tool_display import format_tool_result_body
+        from deep_code.cli.tool_display import format_tool_result_body
 
         result = ToolResult.error_result(
             "Write",
@@ -204,7 +204,7 @@ class TestToolResultFormatting:
 
     def test_format_tool_result_truncated(self):
         """Test formatting long tool result."""
-        from claude_code.cli.tool_display import format_tool_result_body
+        from deep_code.cli.tool_display import format_tool_result_body
 
         long_output = "x" * 10000
         result = ToolResult.success_result("Read", long_output)
@@ -218,7 +218,7 @@ class TestToolBlockCreation:
 
     def test_create_tool_block_from_call_and_result(self):
         """Test creating ToolBlock from tool call and result."""
-        from claude_code.cli.tool_display import create_tool_block
+        from deep_code.cli.tool_display import create_tool_block
 
         tool_call = ToolCall(
             id="call_1",
@@ -239,7 +239,7 @@ class TestToolBlockCreation:
 
     def test_create_tool_block_from_failed_result(self):
         """Test creating ToolBlock from failed result."""
-        from claude_code.cli.tool_display import create_tool_block
+        from deep_code.cli.tool_display import create_tool_block
 
         tool_call = ToolCall(
             id="call_1",
@@ -263,7 +263,7 @@ class TestToolDisplayCallback:
 
     def test_on_tool_call_callback(self):
         """Test that on_tool_call callback creates proper display."""
-        from claude_code.cli.tool_display import create_tool_block
+        from deep_code.cli.tool_display import create_tool_block
 
         displayed_blocks = []
 
@@ -294,10 +294,10 @@ class TestToolDisplayIntegration:
 
     def test_agent_with_tool_display_callback(self):
         """Test agent integration with tool display callback."""
-        from claude_code.core.agent import Agent, AgentConfig
-        from claude_code.core.tools.registry import ToolRegistry
-        from claude_code.core.tools.base import Tool, ToolCategory, ToolParameter
-        from claude_code.cli.tool_display import create_tool_block
+        from deep_code.core.agent import Agent, AgentConfig
+        from deep_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.base import Tool, ToolCategory, ToolParameter
+        from deep_code.cli.tool_display import create_tool_block
 
         class MockTool(Tool):
             @property

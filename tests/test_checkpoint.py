@@ -12,14 +12,14 @@ from datetime import datetime
 
 import pytest
 
-from claude_code.security.checkpoint import (
+from deep_code.security.checkpoint import (
     Checkpoint,
     CheckpointManager,
     CheckpointError,
     CheckpointExistsError,
     CheckpointNotFoundError,
 )
-from claude_code.core.agent import Message, MessageRole, serialize_history, deserialize_history
+from deep_code.core.agent import Message, MessageRole, serialize_history, deserialize_history
 
 
 class TestCheckpoint:
@@ -231,7 +231,7 @@ class TestCheckpointManager:
 
     def test_load_checkpoint_to_agent(self, tmp_path: Path) -> None:
         """Test loading checkpoint restores conversation history."""
-        from claude_code.core.agent import Agent, AgentConfig
+        from deep_code.core.agent import Agent, AgentConfig
 
         manager = CheckpointManager(checkpoint_dir=tmp_path)
 

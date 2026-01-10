@@ -15,7 +15,7 @@ class TestMCPProtocol:
 
     def test_create_request(self):
         """Test creating a JSON-RPC request."""
-        from claude_code.extensions.mcp.protocol import MCPProtocol
+        from deep_code.extensions.mcp.protocol import MCPProtocol
 
         protocol = MCPProtocol()
         request = protocol.create_request("tools/list", {})
@@ -29,7 +29,7 @@ class TestMCPProtocol:
 
     def test_create_request_with_params(self):
         """Test creating a request with parameters."""
-        from claude_code.extensions.mcp.protocol import MCPProtocol
+        from deep_code.extensions.mcp.protocol import MCPProtocol
 
         protocol = MCPProtocol()
         request = protocol.create_request("tools/call", {
@@ -43,7 +43,7 @@ class TestMCPProtocol:
 
     def test_parse_response_success(self):
         """Test parsing a successful response."""
-        from claude_code.extensions.mcp.protocol import MCPProtocol
+        from deep_code.extensions.mcp.protocol import MCPProtocol
 
         protocol = MCPProtocol()
         response_data = {
@@ -60,7 +60,7 @@ class TestMCPProtocol:
 
     def test_parse_response_error(self):
         """Test parsing an error response."""
-        from claude_code.extensions.mcp.protocol import MCPProtocol
+        from deep_code.extensions.mcp.protocol import MCPProtocol
 
         protocol = MCPProtocol()
         response_data = {
@@ -80,7 +80,7 @@ class TestMCPProtocol:
 
     def test_parse_response_invalid_json(self):
         """Test parsing invalid JSON."""
-        from claude_code.extensions.mcp.protocol import MCPProtocol
+        from deep_code.extensions.mcp.protocol import MCPProtocol
 
         protocol = MCPProtocol()
         result = protocol.parse_response("not valid json")
@@ -90,7 +90,7 @@ class TestMCPProtocol:
 
     def test_request_id_increments(self):
         """Test that request IDs increment."""
-        from claude_code.extensions.mcp.protocol import MCPProtocol
+        from deep_code.extensions.mcp.protocol import MCPProtocol
 
         protocol = MCPProtocol()
         req1 = protocol.create_request("test", {})
@@ -104,7 +104,7 @@ class TestMCPResponse:
 
     def test_success_response(self):
         """Test creating a success response."""
-        from claude_code.extensions.mcp.protocol import MCPResponse
+        from deep_code.extensions.mcp.protocol import MCPResponse
 
         response = MCPResponse(success=True, data={"key": "value"})
 
@@ -114,7 +114,7 @@ class TestMCPResponse:
 
     def test_error_response(self):
         """Test creating an error response."""
-        from claude_code.extensions.mcp.protocol import MCPResponse
+        from deep_code.extensions.mcp.protocol import MCPResponse
 
         response = MCPResponse(success=False, error="Something went wrong")
 
@@ -128,7 +128,7 @@ class TestMCPToolDefinition:
 
     def test_parse_tool_definition(self):
         """Test parsing an MCP tool definition."""
-        from claude_code.extensions.mcp.protocol import parse_tool_definition
+        from deep_code.extensions.mcp.protocol import parse_tool_definition
 
         mcp_tool = {
             "name": "read_file",
@@ -153,7 +153,7 @@ class TestMCPToolDefinition:
 
     def test_parse_tool_definition_minimal(self):
         """Test parsing a minimal tool definition."""
-        from claude_code.extensions.mcp.protocol import parse_tool_definition
+        from deep_code.extensions.mcp.protocol import parse_tool_definition
 
         mcp_tool = {
             "name": "simple_tool",
@@ -171,7 +171,7 @@ class TestMCPClient:
 
     def test_client_initialization(self):
         """Test client initialization."""
-        from claude_code.extensions.mcp.client import MCPClient
+        from deep_code.extensions.mcp.client import MCPClient
 
         client = MCPClient(server_name="test-server")
 
@@ -180,7 +180,7 @@ class TestMCPClient:
 
     def test_client_with_config(self):
         """Test client with configuration."""
-        from claude_code.extensions.mcp.client import MCPClient
+        from deep_code.extensions.mcp.client import MCPClient
 
         config = {
             "command": "python",
@@ -193,7 +193,7 @@ class TestMCPClient:
 
     def test_list_tools_not_connected(self):
         """Test listing tools when not connected."""
-        from claude_code.extensions.mcp.client import MCPClient
+        from deep_code.extensions.mcp.client import MCPClient
 
         client = MCPClient(server_name="test")
         tools = client.list_tools()
@@ -202,7 +202,7 @@ class TestMCPClient:
 
     def test_call_tool_not_connected(self):
         """Test calling tool when not connected."""
-        from claude_code.extensions.mcp.client import MCPClient, MCPError
+        from deep_code.extensions.mcp.client import MCPClient, MCPError
 
         client = MCPClient(server_name="test")
 
@@ -217,7 +217,7 @@ class TestMCPClientConnection:
 
     def test_connect_stdio(self):
         """Test connecting via stdio transport."""
-        from claude_code.extensions.mcp.client import MCPClient
+        from deep_code.extensions.mcp.client import MCPClient
 
         with patch("subprocess.Popen") as mock_popen:
             mock_process = Mock()
@@ -253,7 +253,7 @@ class TestMCPClientConnection:
 
     def test_disconnect(self):
         """Test disconnecting from server."""
-        from claude_code.extensions.mcp.client import MCPClient
+        from deep_code.extensions.mcp.client import MCPClient
 
         client = MCPClient(server_name="test")
         client._connected = True
@@ -269,7 +269,7 @@ class TestMCPToolWrapper:
 
     def test_create_wrapper_tool(self):
         """Test creating a wrapper tool from MCP definition."""
-        from claude_code.extensions.mcp.tools import MCPToolWrapper
+        from deep_code.extensions.mcp.tools import MCPToolWrapper
 
         mcp_tool_def = {
             "name": "mcp_read_file",
@@ -295,7 +295,7 @@ class TestMCPToolWrapper:
 
     def test_wrapper_tool_execute(self):
         """Test executing a wrapper tool."""
-        from claude_code.extensions.mcp.tools import MCPToolWrapper
+        from deep_code.extensions.mcp.tools import MCPToolWrapper
 
         mcp_tool_def = {
             "name": "test_tool",
@@ -318,8 +318,8 @@ class TestMCPToolWrapper:
 
     def test_wrapper_tool_execute_error(self):
         """Test wrapper tool execution error handling."""
-        from claude_code.extensions.mcp.tools import MCPToolWrapper
-        from claude_code.extensions.mcp.client import MCPError
+        from deep_code.extensions.mcp.tools import MCPToolWrapper
+        from deep_code.extensions.mcp.client import MCPError
 
         mcp_tool_def = {
             "name": "failing_tool",
@@ -342,7 +342,7 @@ class TestMCPToolWrapper:
 
     def test_wrapper_tool_json_schema(self):
         """Test wrapper tool JSON schema generation."""
-        from claude_code.extensions.mcp.tools import MCPToolWrapper
+        from deep_code.extensions.mcp.tools import MCPToolWrapper
 
         mcp_tool_def = {
             "name": "schema_tool",
@@ -374,7 +374,7 @@ class TestMCPConfig:
 
     def test_load_config_from_dict(self):
         """Test loading config from dictionary."""
-        from claude_code.extensions.mcp.config import MCPConfig
+        from deep_code.extensions.mcp.config import MCPConfig
 
         config_dict = {
             "mcpServers": {
@@ -398,7 +398,7 @@ class TestMCPConfig:
 
     def test_load_config_empty(self):
         """Test loading empty config."""
-        from claude_code.extensions.mcp.config import MCPConfig
+        from deep_code.extensions.mcp.config import MCPConfig
 
         config = MCPConfig.from_dict({})
 
@@ -406,7 +406,7 @@ class TestMCPConfig:
 
     def test_get_server_config(self):
         """Test getting server configuration."""
-        from claude_code.extensions.mcp.config import MCPConfig
+        from deep_code.extensions.mcp.config import MCPConfig
 
         config_dict = {
             "mcpServers": {
@@ -425,7 +425,7 @@ class TestMCPConfig:
 
     def test_get_nonexistent_server(self):
         """Test getting non-existent server config."""
-        from claude_code.extensions.mcp.config import MCPConfig
+        from deep_code.extensions.mcp.config import MCPConfig
 
         config = MCPConfig.from_dict({})
         server_config = config.get_server("nonexistent")
@@ -434,7 +434,7 @@ class TestMCPConfig:
 
     def test_load_config_from_file(self, tmp_path):
         """Test loading config from JSON file."""
-        from claude_code.extensions.mcp.config import MCPConfig
+        from deep_code.extensions.mcp.config import MCPConfig
 
         config_file = tmp_path / "mcp_config.json"
         config_data = {
@@ -454,7 +454,7 @@ class TestMCPManager:
 
     def test_manager_initialization(self):
         """Test manager initialization."""
-        from claude_code.extensions.mcp.manager import MCPManager
+        from deep_code.extensions.mcp.manager import MCPManager
 
         manager = MCPManager()
 
@@ -462,7 +462,7 @@ class TestMCPManager:
 
     def test_manager_add_server(self):
         """Test adding a server to manager."""
-        from claude_code.extensions.mcp.manager import MCPManager
+        from deep_code.extensions.mcp.manager import MCPManager
 
         manager = MCPManager()
         manager.add_server("test", {"command": "test_cmd"})
@@ -471,7 +471,7 @@ class TestMCPManager:
 
     def test_manager_remove_server(self):
         """Test removing a server from manager."""
-        from claude_code.extensions.mcp.manager import MCPManager
+        from deep_code.extensions.mcp.manager import MCPManager
 
         manager = MCPManager()
         manager.add_server("test", {"command": "test_cmd"})
@@ -481,7 +481,7 @@ class TestMCPManager:
 
     def test_manager_get_all_tools(self):
         """Test getting all tools from all servers."""
-        from claude_code.extensions.mcp.manager import MCPManager
+        from deep_code.extensions.mcp.manager import MCPManager
 
         manager = MCPManager()
 
@@ -501,8 +501,8 @@ class TestMCPManager:
 
     def test_manager_register_tools_to_registry(self):
         """Test registering MCP tools to ToolRegistry."""
-        from claude_code.extensions.mcp.manager import MCPManager
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.extensions.mcp.manager import MCPManager
+        from deep_code.core.tools.registry import ToolRegistry
 
         manager = MCPManager()
         registry = ToolRegistry()
@@ -528,9 +528,9 @@ class TestMCPIntegration:
 
     def test_full_workflow(self):
         """Test full MCP workflow: config -> connect -> list tools -> call tool."""
-        from claude_code.extensions.mcp.config import MCPConfig
-        from claude_code.extensions.mcp.manager import MCPManager
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.extensions.mcp.config import MCPConfig
+        from deep_code.extensions.mcp.manager import MCPManager
+        from deep_code.core.tools.registry import ToolRegistry
 
         # Create config
         config = MCPConfig.from_dict({
@@ -558,7 +558,7 @@ class TestMCPIntegration:
 
     def test_tool_naming_convention(self):
         """Test that MCP tools follow naming convention: mcp__server__toolname."""
-        from claude_code.extensions.mcp.tools import MCPToolWrapper
+        from deep_code.extensions.mcp.tools import MCPToolWrapper
 
         wrapper = MCPToolWrapper(
             tool_definition={"name": "read", "description": "Read"},
@@ -570,8 +570,8 @@ class TestMCPIntegration:
 
     def test_tool_category(self):
         """Test that MCP tools have correct category."""
-        from claude_code.extensions.mcp.tools import MCPToolWrapper
-        from claude_code.core.tools.base import ToolCategory
+        from deep_code.extensions.mcp.tools import MCPToolWrapper
+        from deep_code.core.tools.base import ToolCategory
 
         wrapper = MCPToolWrapper(
             tool_definition={"name": "test", "description": "Test"},

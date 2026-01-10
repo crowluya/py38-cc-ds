@@ -7,13 +7,13 @@ Python 3.8.10 compatible
 import pytest
 from typing import Dict, Any, List
 
-from claude_code.core.tools.base import (
+from deep_code.core.tools.base import (
     Tool,
     ToolCategory,
     ToolParameter,
     ToolResult,
 )
-from claude_code.core.tools.registry import (
+from deep_code.core.tools.registry import (
     ToolRegistry,
     ToolNotFoundError,
     ToolAlreadyRegisteredError,

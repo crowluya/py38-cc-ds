@@ -11,7 +11,7 @@ from typing import List
 
 import pytest
 
-from claude_code.security.permissions import (
+from deep_code.security.permissions import (
     Permission,
     PermissionAction,
     PermissionDomain,
@@ -565,7 +565,7 @@ def test_permission_case_sensitive() -> None:
 
 def test_permission_approver_create() -> None:
     """验证创建 PermissionApprover"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     approver = PermissionApprover(manager)
@@ -576,7 +576,7 @@ def test_permission_approver_create() -> None:
 
 def test_permission_approver_allow_action() -> None:
     """验证 ALLOW 动作直接通过"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -600,7 +600,7 @@ def test_permission_approver_allow_action() -> None:
 
 def test_permission_approver_deny_action() -> None:
     """验证 DENY 动作直接拒绝"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -624,7 +624,7 @@ def test_permission_approver_deny_action() -> None:
 
 def test_permission_approver_ask_action_without_callback() -> None:
     """验证 ASK 动作无回调时拒绝"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -648,7 +648,7 @@ def test_permission_approver_ask_action_without_callback() -> None:
 
 def test_permission_approver_ask_action_with_grant_callback() -> None:
     """验证 ASK 动作回调通过"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -675,7 +675,7 @@ def test_permission_approver_ask_action_with_grant_callback() -> None:
 
 def test_permission_approver_ask_action_with_deny_callback() -> None:
     """验证 ASK 动作回调拒绝"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -702,7 +702,7 @@ def test_permission_approver_ask_action_with_deny_callback() -> None:
 
 def test_permission_approver_callback_parameters() -> None:
     """验证回调函数参数传递"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -735,7 +735,7 @@ def test_permission_approver_callback_parameters() -> None:
 
 def test_permission_approver_audit_log() -> None:
     """验证审批日志"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -763,7 +763,7 @@ def test_permission_approver_audit_log() -> None:
 
 def test_permission_approver_audit_log_for_denied() -> None:
     """验证拒绝操作的审计日志"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -789,7 +789,7 @@ def test_permission_approver_audit_log_for_denied() -> None:
 
 def test_permission_approver_get_audit_history() -> None:
     """验证获取审计历史"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -815,7 +815,7 @@ def test_permission_approver_get_audit_history() -> None:
 
 def test_permission_approver_clear_audit_log() -> None:
     """验证清空审计日志"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -835,7 +835,7 @@ def test_permission_approver_clear_audit_log() -> None:
 
 def test_permission_approver_check_and_execute_allowed() -> None:
     """验证检查并执行允许的操作"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -865,7 +865,7 @@ def test_permission_approver_check_and_execute_allowed() -> None:
 
 def test_permission_approver_check_and_execute_denied() -> None:
     """验证检查并执行拒绝的操作"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -895,7 +895,7 @@ def test_permission_approver_check_and_execute_denied() -> None:
 
 def test_permission_approver_check_and_execute_ask_granted() -> None:
     """验证 ASK 操作通过后执行"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(
@@ -928,7 +928,7 @@ def test_permission_approver_check_and_execute_ask_granted() -> None:
 
 def test_permission_approver_check_and_execute_ask_denied() -> None:
     """验证 ASK 操作拒绝后不执行"""
-    from claude_code.security.permissions import PermissionApprover
+    from deep_code.security.permissions import PermissionApprover
 
     manager = PermissionManager()
     manager.add_rule(PermissionRule(

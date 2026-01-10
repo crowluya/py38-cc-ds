@@ -10,12 +10,12 @@ from typing import List, Optional
 
 import pytest
 
-from claude_code.security.checkpoint import (
+from deep_code.security.checkpoint import (
     CheckpointManager,
     CheckpointNotFoundError,
 )
-from claude_code.core.agent import Agent, AgentConfig, Message, MessageRole
-from claude_code.cli.rewind import (
+from deep_code.core.agent import Agent, AgentConfig, Message, MessageRole
+from deep_code.cli.rewind import (
     RewindMode,
     RewindResult,
     RewindError,

@@ -16,7 +16,7 @@ class TestOCRResult:
 
     def test_ocr_result_creation(self):
         """Test creating OCR result."""
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock
 
         block = TextBlock(
             text="Hello World",
@@ -35,7 +35,7 @@ class TestOCRResult:
 
     def test_ocr_result_empty(self):
         """Test empty OCR result."""
-        from claude_code.extensions.ocr.result import OCRResult
+        from deep_code.extensions.ocr.result import OCRResult
 
         result = OCRResult(text="", blocks=[], language="")
 
@@ -44,7 +44,7 @@ class TestOCRResult:
 
     def test_text_block_to_dict(self):
         """Test TextBlock to dict conversion."""
-        from claude_code.extensions.ocr.result import TextBlock
+        from deep_code.extensions.ocr.result import TextBlock
 
         block = TextBlock(
             text="Test",
@@ -60,7 +60,7 @@ class TestOCRResult:
 
     def test_ocr_result_to_dict(self):
         """Test OCRResult to dict conversion."""
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock
 
         result = OCRResult(
             text="Hello",
@@ -76,7 +76,7 @@ class TestOCRResult:
 
     def test_ocr_result_format_text(self):
         """Test formatting OCR result as plain text."""
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock
 
         result = OCRResult(
             text="Line 1\nLine 2",
@@ -98,7 +98,7 @@ class TestOCRConfig:
 
     def test_config_defaults(self):
         """Test default configuration."""
-        from claude_code.extensions.ocr.engine import OCRConfig
+        from deep_code.extensions.ocr.engine import OCRConfig
 
         config = OCRConfig()
 
@@ -108,7 +108,7 @@ class TestOCRConfig:
 
     def test_config_custom(self):
         """Test custom configuration."""
-        from claude_code.extensions.ocr.engine import OCRConfig
+        from deep_code.extensions.ocr.engine import OCRConfig
 
         config = OCRConfig(
             use_gpu=False,
@@ -124,7 +124,7 @@ class TestOCRConfig:
 
     def test_config_to_dict(self):
         """Test config to dict conversion."""
-        from claude_code.extensions.ocr.engine import OCRConfig
+        from deep_code.extensions.ocr.engine import OCRConfig
 
         config = OCRConfig(lang="en")
         d = config.to_dict()
@@ -138,7 +138,7 @@ class TestOCREngine:
 
     def test_engine_initialization(self):
         """Test engine initialization."""
-        from claude_code.extensions.ocr.engine import OCREngine, OCRConfig
+        from deep_code.extensions.ocr.engine import OCREngine, OCRConfig
 
         config = OCRConfig()
         engine = OCREngine(config)
@@ -148,7 +148,7 @@ class TestOCREngine:
 
     def test_engine_lazy_loading(self):
         """Test that OCR model is loaded lazily."""
-        from claude_code.extensions.ocr.engine import OCREngine, OCRConfig
+        from deep_code.extensions.ocr.engine import OCREngine, OCRConfig
 
         config = OCRConfig()
         engine = OCREngine(config)
@@ -159,7 +159,7 @@ class TestOCREngine:
 
     def test_engine_supported_formats(self):
         """Test supported image formats."""
-        from claude_code.extensions.ocr.engine import OCREngine
+        from deep_code.extensions.ocr.engine import OCREngine
 
         formats = OCREngine.SUPPORTED_FORMATS
 
@@ -170,7 +170,7 @@ class TestOCREngine:
 
     def test_engine_is_supported_format(self):
         """Test checking supported formats."""
-        from claude_code.extensions.ocr.engine import OCREngine, OCRConfig
+        from deep_code.extensions.ocr.engine import OCREngine, OCRConfig
 
         engine = OCREngine(OCRConfig())
 
@@ -186,8 +186,8 @@ class TestOCREngineMocked:
 
     def test_recognize_image_success(self, tmp_path):
         """Test successful image recognition."""
-        from claude_code.extensions.ocr.engine import OCREngine, OCRConfig
-        from claude_code.extensions.ocr.result import OCRResult
+        from deep_code.extensions.ocr.engine import OCREngine, OCRConfig
+        from deep_code.extensions.ocr.result import OCRResult
 
         # Create a fake image file
         test_image = tmp_path / "test.png"
@@ -213,8 +213,8 @@ class TestOCREngineMocked:
 
     def test_recognize_image_empty_result(self, tmp_path):
         """Test recognition with no text found."""
-        from claude_code.extensions.ocr.engine import OCREngine, OCRConfig
-        from claude_code.extensions.ocr.result import OCRResult
+        from deep_code.extensions.ocr.engine import OCREngine, OCRConfig
+        from deep_code.extensions.ocr.result import OCRResult
 
         # Create a fake image file
         test_image = tmp_path / "test.png"
@@ -236,8 +236,8 @@ class TestOCREngineMocked:
 
     def test_recognize_image_none_result(self, tmp_path):
         """Test recognition with None result."""
-        from claude_code.extensions.ocr.engine import OCREngine, OCRConfig
-        from claude_code.extensions.ocr.result import OCRResult
+        from deep_code.extensions.ocr.engine import OCREngine, OCRConfig
+        from deep_code.extensions.ocr.result import OCRResult
 
         # Create a fake image file
         test_image = tmp_path / "test.png"
@@ -258,7 +258,7 @@ class TestOCREngineMocked:
 
     def test_recognize_unsupported_format(self):
         """Test recognition with unsupported format."""
-        from claude_code.extensions.ocr.engine import OCREngine, OCRConfig, OCRError
+        from deep_code.extensions.ocr.engine import OCREngine, OCRConfig, OCRError
 
         engine = OCREngine(OCRConfig())
 
@@ -269,7 +269,7 @@ class TestOCREngineMocked:
 
     def test_recognize_file_not_found(self):
         """Test recognition with non-existent file."""
-        from claude_code.extensions.ocr.engine import OCREngine, OCRConfig, OCRError
+        from deep_code.extensions.ocr.engine import OCREngine, OCRConfig, OCRError
 
         engine = OCREngine(OCRConfig())
         engine._ocr = Mock()
@@ -286,14 +286,14 @@ class TestImageProcessor:
 
     def test_processor_initialization(self):
         """Test processor initialization."""
-        from claude_code.extensions.ocr.processor import ImageProcessor
+        from deep_code.extensions.ocr.processor import ImageProcessor
 
         processor = ImageProcessor()
         assert processor is not None
 
     def test_validate_image_path_exists(self, tmp_path):
         """Test validating existing image path."""
-        from claude_code.extensions.ocr.processor import ImageProcessor
+        from deep_code.extensions.ocr.processor import ImageProcessor
 
         # Create a test image file
         test_image = tmp_path / "test.png"
@@ -305,7 +305,7 @@ class TestImageProcessor:
 
     def test_validate_image_path_not_exists(self):
         """Test validating non-existent path."""
-        from claude_code.extensions.ocr.processor import ImageProcessor, ImageError
+        from deep_code.extensions.ocr.processor import ImageProcessor, ImageError
 
         processor = ImageProcessor()
 
@@ -314,7 +314,7 @@ class TestImageProcessor:
 
     def test_get_image_info(self, tmp_path):
         """Test getting image info."""
-        from claude_code.extensions.ocr.processor import ImageProcessor
+        from deep_code.extensions.ocr.processor import ImageProcessor
 
         # Create a minimal valid PNG
         test_image = tmp_path / "test.png"
@@ -340,7 +340,7 @@ class TestImageProcessor:
 
     def test_supported_formats(self):
         """Test supported format checking."""
-        from claude_code.extensions.ocr.processor import ImageProcessor
+        from deep_code.extensions.ocr.processor import ImageProcessor
 
         processor = ImageProcessor()
 
@@ -358,7 +358,7 @@ class TestOCRResultFormatter:
 
     def test_format_as_plain_text(self):
         """Test formatting as plain text."""
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock, format_result
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock, format_result
 
         result = OCRResult(
             text="Hello\nWorld",
@@ -376,7 +376,7 @@ class TestOCRResultFormatter:
 
     def test_format_as_json(self):
         """Test formatting as JSON."""
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock, format_result
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock, format_result
         import json
 
         result = OCRResult(
@@ -393,7 +393,7 @@ class TestOCRResultFormatter:
 
     def test_format_with_confidence(self):
         """Test formatting with confidence scores."""
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock, format_result
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock, format_result
 
         result = OCRResult(
             text="Test",
@@ -416,7 +416,7 @@ class TestOCREngineIntegration:
     )
     def test_real_ocr_recognition(self, tmp_path):
         """Test real OCR recognition (requires PaddleOCR)."""
-        from claude_code.extensions.ocr.engine import OCREngine, OCRConfig
+        from deep_code.extensions.ocr.engine import OCREngine, OCRConfig
 
         # This test only runs when TEST_OCR_INTEGRATION=1
         config = OCRConfig(use_gpu=False, lang="en")
@@ -433,7 +433,7 @@ class TestOCRModule:
 
     def test_module_exports(self):
         """Test that module exports are available."""
-        from claude_code.extensions.ocr import (
+        from deep_code.extensions.ocr import (
             OCREngine,
             OCRConfig,
             OCRResult,

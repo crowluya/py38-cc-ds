@@ -11,7 +11,7 @@ from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
 from prompt_toolkit import PromptSession
 
-from claude_code.cli.input import Input, get_input, set_input
+from deep_code.cli.input import Input, get_input, set_input
 
 
 def test_input_create() -> None:

@@ -96,9 +96,9 @@ celerybeat.pid
 claude-code-ai-native-workflows/
 
 # Claude Code 项目配置（个人本地配置）
-#.claude/settings.local.json
-#.claude/hooks/*.py
-#.claude/hooks/*.sh
+#.deepcode/settings.local.json
+#.deepcode/hooks/*.py
+#.deepcode/hooks/*.sh
 
 # 临时文件和日志
 *.log
@@ -136,7 +136,7 @@ docs/.doctrees/
 
 # 示例和临时项目
 examples/*/__pycache__/
-examples/*/.claude/
+examples/*/.deepcode/
 
 # Local demo project (generated for testing pycc workflow)
 flask_demo/
@@ -147,5 +147,5 @@ flask_demo/
 .env.*.local
 
 # Checkpoints (may contain sensitive conversation data)
-.claude/checkpoints/
+.deepcode/checkpoints/
 *.checkpoint.json

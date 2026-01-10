@@ -53,7 +53,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "claude-code=claude_code.cli.main:main",
+            "claude-code=deep_code.cli.main:main",
         ],
     },
     include_package_data=True,

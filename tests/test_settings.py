@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 import pytest
 
-from claude_code.config.settings import (
+from deep_code.config.settings import (
     HookSettings,
     LLMSettings,
     PermissionSettings,

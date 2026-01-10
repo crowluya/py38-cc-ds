@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from claude_code.core.executor import (
+from deep_code.core.executor import (
     CommandExecutor,
     CommandResult,
     execute_command,
@@ -232,7 +232,7 @@ def test_combined_output() -> None:
 
 def test_executor_with_permission_allow() -> None:
     """验证权限允许时执行命令"""
-    from claude_code.security.permissions import (
+    from deep_code.security.permissions import (
         PermissionManager,
         PermissionRule,
         PermissionAction,
@@ -256,7 +256,7 @@ def test_executor_with_permission_allow() -> None:
 
 def test_executor_with_permission_deny() -> None:
     """验证权限拒绝时不执行命令"""
-    from claude_code.security.permissions import (
+    from deep_code.security.permissions import (
         PermissionManager,
         PermissionRule,
         PermissionAction,
@@ -281,7 +281,7 @@ def test_executor_with_permission_deny() -> None:
 
 def test_executor_with_permission_ask_granted() -> None:
     """验证 ASK 权限通过时执行命令"""
-    from claude_code.security.permissions import (
+    from deep_code.security.permissions import (
         PermissionManager,
         PermissionRule,
         PermissionAction,
@@ -312,7 +312,7 @@ def test_executor_with_permission_ask_granted() -> None:
 
 def test_executor_with_permission_ask_denied() -> None:
     """验证 ASK 权限拒绝时不执行命令"""
-    from claude_code.security.permissions import (
+    from deep_code.security.permissions import (
         PermissionManager,
         PermissionRule,
         PermissionAction,

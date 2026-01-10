@@ -10,8 +10,8 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from claude_code.config.settings import LLMSettings, Settings
-from claude_code.llm.requests_client import RequestsClient
+from deep_code.config.settings import LLMSettings, Settings
+from deep_code.llm.requests_client import RequestsClient
 
 
 @pytest.fixture
@@ -99,7 +99,7 @@ def test_get_api_url_default() -> None:
     assert "api.openai.com" in client._get_api_url()
 
 
-@patch("claude_code.llm.requests_client.requests.Session")
+@patch("deep_code.llm.requests_client.requests.Session")
 def test_chat_completion(mock_session_class: Mock, mock_settings: Settings) -> None:
     """验证 chat_completion 方法"""
     # Mock response
@@ -124,7 +124,7 @@ def test_chat_completion(mock_session_class: Mock, mock_settings: Settings) -> N
     assert response["usage"]["total_tokens"] == 30
 
 
-@patch("claude_code.llm.requests_client.requests.Session")
+@patch("deep_code.llm.requests_client.requests.Session")
 def test_chat_completion_stream(mock_session_class: Mock, mock_settings: Settings) -> None:
     """验证 chat_completion_stream 方法"""
     # Mock streaming response

@@ -1,4 +1,4 @@
-# Claude Code Python MVP - 需求规范（Specification）
+# DeepCode - 需求规范（Specification）
 
 **版本**: 1.0  
 **日期**: 2024-12-19  
@@ -61,8 +61,8 @@
 - **验收标准**：
   - 能够定义 `/review` 命令进行代码审查
   - 能够定义 `/commit` 命令生成提交信息
-  - 支持项目级命令（`.claude/commands/`）
-  - 支持用户级命令（`~/.claude/commands/`）
+  - 支持项目级命令（`.deepcode/commands/`）
+  - 支持用户级命令（`~/.deepcode/commands/`）
   - 支持参数传递（`$ARGUMENTS`, `$1/$2...`）
 
 **US-005：作为开发者，我希望通过规范驱动开发流程，从需求到实现**
@@ -163,8 +163,8 @@
 #### 3.3.2 分层加载
 
 - 企业级配置（如果存在）
-- 项目级配置（`.claude/settings.json`）
-- 用户级配置（`~/.claude/settings.json`）
+- 项目级配置（`.deepcode/settings.json`）
+- 用户级配置（`~/.deepcode/settings.json`）
 - 优先级：CLI 参数 > 项目本地 > 项目共享 > 用户全局
 
 ### 3.4 工作流封装
@@ -180,8 +180,8 @@
   - `model`：指定模型
   - `allowed-tools`：工具权限
 - **作用域**：
-  - 项目级：`.claude/commands/`
-  - 用户级：`~/.claude/commands/`
+  - 项目级：`.deepcode/commands/`
+  - 用户级：`~/.deepcode/commands/`
 
 #### 3.4.2 Hooks 系统
 
@@ -323,7 +323,7 @@ spec.md → plan.md → tasks.md → 代码实现
 用户输入：/review core/agent.py
 
 系统行为：
-1. 查找 `.claude/commands/review.md` 或 `~/.claude/commands/review.md`
+1. 查找 `.deepcode/commands/review.md` 或 `~/.deepcode/commands/review.md`
 2. 读取命令定义
 3. 执行命令逻辑（读取文件、运行检查、生成报告）
 ```

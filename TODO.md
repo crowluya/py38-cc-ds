@@ -1,19 +1,19 @@
-# Claude Code Python MVP - 实施任务清单
+# DeepCode - 实施任务清单
 
-基于 [实施计划](.cursor/plans/claude_code_python_mvp_ec199ec3.plan.md) 的任务跟踪清单。
+基于 [实施计划](.cursor/plans/deep_code_python_mvp_ec199ec3.plan.md) 的任务跟踪清单。
 
 ## Phase 1: 核心基础设施（Week 1-2）
 
 ### 1. 项目骨架
 - [ ] 创建项目目录结构
-  - [ ] `claude_code/` 主包目录
-  - [ ] `claude_code/core/` 核心模块
-  - [ ] `claude_code/interaction/` 交互模块
-  - [ ] `claude_code/security/` 安全模块
-  - [ ] `claude_code/extensions/` 扩展模块
-  - [ ] `claude_code/llm/` LLM 客户端模块
-  - [ ] `claude_code/config/` 配置模块
-  - [ ] `claude_code/cli/` CLI 模块
+  - [ ] `deep_code/` 主包目录
+  - [ ] `deep_code/core/` 核心模块
+  - [ ] `deep_code/interaction/` 交互模块
+  - [ ] `deep_code/security/` 安全模块
+  - [ ] `deep_code/extensions/` 扩展模块
+  - [ ] `deep_code/llm/` LLM 客户端模块
+  - [ ] `deep_code/config/` 配置模块
+  - [ ] `deep_code/cli/` CLI 模块
   - [ ] `tests/` 测试目录
 - [ ] 设置 Python 3.8.10 严格兼容的依赖
   - [ ] 创建 `requirements.txt`（精确版本）
@@ -461,6 +461,6 @@
 ---
 
 **最后更新**: 2024-12-19
-**项目**: Claude Code Python MVP
+**项目**: DeepCode
 **目标环境**: Python 3.8.10 + Windows 7
 

@@ -40,9 +40,9 @@ def main():
         return 1
 
     try:
-        from claude_code.config.loader import load_settings
-        from claude_code.llm.factory import create_llm_client
-        from claude_code.config.settings import Settings, LLMSettings
+        from deep_code.config.loader import load_settings
+        from deep_code.llm.factory import create_llm_client
+        from deep_code.config.settings import Settings, LLMSettings
 
         # 加载配置
         settings = load_settings()

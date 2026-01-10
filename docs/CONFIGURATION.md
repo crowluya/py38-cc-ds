@@ -48,7 +48,7 @@ cp .env.example .env
 3. `.pycc/settings.json` - 项目共享配置
 4. `~/.pycc/settings.json` - 用户全局配置
 
-说明：本仓库的 `.claude/` 目录用于外部工具（例如 Claude Code IDE 集成）的配置，不由本 Python 项目读取。
+说明：本仓库的 `.deepcode/` 目录用于外部工具（例如 Claude Code IDE 集成）的配置，不由本 Python 项目读取。
 
 ### 配置文件结构
 

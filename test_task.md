@@ -229,19 +229,19 @@
 
 ```bash
 # 基础测试
-python -m claude_code.cli.main print "test" -o text
-python -m claude_code.cli.main print "test" -o json
-python -m claude_code.cli.main print "test" -o stream-json
+python -m deep_code.cli.main print "test" -o text
+python -m deep_code.cli.main print "test" -o json
+python -m deep_code.cli.main print "test" -o stream-json
 
 # 上下文注入测试
-python -m claude_code.cli.main print "@test.txt 内容" -o text
-python -m claude_code.cli.main print "@test_dir/ 列出" -o text
+python -m deep_code.cli.main print "@test.txt 内容" -o text
+python -m deep_code.cli.main print "@test_dir/ 列出" -o text
 
 # Windows 命令执行注入（示例）
-python -m claude_code.cli.main print "!echo hello" -o text
+python -m deep_code.cli.main print "!echo hello" -o text
 
 # macOS/Linux 命令执行注入（示例）
-python -m claude_code.cli.main print "!ls -la 列出" -o text
+python -m deep_code.cli.main print "!ls -la 列出" -o text
 
 # 单元测试
 python -m pytest tests/ -v

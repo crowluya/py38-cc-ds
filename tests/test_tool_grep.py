@@ -9,7 +9,7 @@ import tempfile
 import pytest
 from pathlib import Path
 
-from claude_code.core.tools.grep import GrepTool
+from deep_code.core.tools.grep import GrepTool
 
 
 class TestGrepTool:
@@ -330,7 +330,7 @@ class TestGrepToolValidation:
     def test_missing_pattern(self):
         """Test that missing pattern raises error."""
         tool = GrepTool()
-        from claude_code.core.tools.base import ToolValidationError
+        from deep_code.core.tools.base import ToolValidationError
 
         with pytest.raises(ToolValidationError):
             tool.execute({})

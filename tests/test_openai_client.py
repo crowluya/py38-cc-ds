@@ -9,8 +9,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from claude_code.config.settings import LLMSettings, Settings
-from claude_code.llm.openai_client import OpenAIClient
+from deep_code.config.settings import LLMSettings, Settings
+from deep_code.llm.openai_client import OpenAIClient
 
 
 @pytest.fixture
@@ -27,21 +27,21 @@ def mock_settings():
 
 def test_client_create(mock_settings: Settings) -> None:
     """验证创建 OpenAI 客户端"""
-    with patch("claude_code.llm.openai_client.openai"):
+    with patch("deep_code.llm.openai_client.openai"):
         client = OpenAIClient(mock_settings)
         assert client is not None
 
 
 def test_get_model(mock_settings: Settings) -> None:
     """验证获取模型名称"""
-    with patch("claude_code.llm.openai_client.openai"):
+    with patch("deep_code.llm.openai_client.openai"):
         client = OpenAIClient(mock_settings)
         assert client.get_model() == "deepseek-chat"
 
 
 def test_validate_config_valid(mock_settings: Settings) -> None:
     """验证有效配置"""
-    with patch("claude_code.llm.openai_client.openai"):
+    with patch("deep_code.llm.openai_client.openai"):
         client = OpenAIClient(mock_settings)
         assert client.validate_config() is True
 
@@ -50,26 +50,26 @@ def test_validate_config_invalid() -> None:
     """验证无效配置（缺少 API key）"""
     settings = Settings(llm=LLMSettings(api_key=None))
 
-    with patch("claude_code.llm.openai_client.openai"):
+    with patch("deep_code.llm.openai_client.openai"):
         client = OpenAIClient(settings)
         assert client.validate_config() is False
 
 
 def test_supports_streaming(mock_settings: Settings) -> None:
     """验证支持流式响应"""
-    with patch("claude_code.llm.openai_client.openai"):
+    with patch("deep_code.llm.openai_client.openai"):
         client = OpenAIClient(mock_settings)
         assert client.supports_streaming() is True
 
 
 def test_supports_tools(mock_settings: Settings) -> None:
     """验证支持工具调用"""
-    with patch("claude_code.llm.openai_client.openai"):
+    with patch("deep_code.llm.openai_client.openai"):
         client = OpenAIClient(mock_settings)
         assert client.supports_tools() is True
 
 
-@patch("claude_code.llm.openai_client.openai")
+@patch("deep_code.llm.openai_client.openai")
 def test_chat_completion(mock_openai: Mock, mock_settings: Settings) -> None:
     """验证 chat_completion 方法"""
     # Mock the response
@@ -93,7 +93,7 @@ def test_chat_completion(mock_openai: Mock, mock_settings: Settings) -> None:
     assert response["usage"]["total_tokens"] == 30
 
 
-@patch("claude_code.llm.openai_client.openai")
+@patch("deep_code.llm.openai_client.openai")
 def test_chat_completion_stream(mock_openai: Mock, mock_settings: Settings) -> None:
     """验证 chat_completion_stream 方法"""
     # Mock streaming response
@@ -119,7 +119,7 @@ def test_chat_completion_stream(mock_openai: Mock, mock_settings: Settings) -> N
 
 def test_format_messages(mock_settings: Settings) -> None:
     """验证格式化消息"""
-    with patch("claude_code.llm.openai_client.openai"):
+    with patch("deep_code.llm.openai_client.openai"):
         client = OpenAIClient(mock_settings)
         messages = [{"role": "user", "content": "Hello"}]
 

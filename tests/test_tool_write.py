@@ -9,7 +9,7 @@ import tempfile
 import pytest
 from pathlib import Path
 
-from claude_code.core.tools.write import WriteTool
+from deep_code.core.tools.write import WriteTool
 
 
 class TestWriteTool:
@@ -238,7 +238,7 @@ class TestWriteToolValidation:
     def test_missing_file_path(self):
         """Test that missing file_path raises error."""
         tool = WriteTool()
-        from claude_code.core.tools.base import ToolValidationError
+        from deep_code.core.tools.base import ToolValidationError
 
         with pytest.raises(ToolValidationError):
             tool.execute({"content": "hello"})
@@ -246,7 +246,7 @@ class TestWriteToolValidation:
     def test_missing_content(self):
         """Test that missing content raises error."""
         tool = WriteTool()
-        from claude_code.core.tools.base import ToolValidationError
+        from deep_code.core.tools.base import ToolValidationError
 
         with pytest.raises(ToolValidationError):
             tool.execute({"file_path": "/tmp/test.txt"})

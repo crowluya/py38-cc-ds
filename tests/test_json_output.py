@@ -13,8 +13,8 @@ from unittest.mock import Mock, patch
 import pytest
 from click.testing import CliRunner
 
-from claude_code.cli.main import cli
-from claude_code.core.agent import ConversationTurn, ToolCall, ToolType
+from deep_code.cli.main import cli
+from deep_code.core.agent import ConversationTurn, ToolCall, ToolType
 
 
 # ===== Test Fixtures =====
@@ -90,7 +90,7 @@ def test_json_output_with_basic_response():
     """Test --json flag outputs valid JSON with all required fields."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Hello World")
 
         result = runner.invoke(cli, ["chat", "-p", "Say hello", "--json"])
@@ -126,7 +126,7 @@ def test_json_output_with_finish_reasons():
     runner = CliRunner()
 
     for reason in ["stop", "length", "content_filter"]:
-        with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+        with patch("deep_code.cli.main.create_llm_client") as mock_factory:
             mock_factory.return_value = FakeLLMClient(
                 response="Response",
                 finish_reason=reason,
@@ -144,7 +144,7 @@ def test_json_output_with_tool_calls():
     """Test --json flag includes tool_calls in response."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         tool_calls = create_sample_tool_calls()
         mock_factory.return_value = FakeLLMClient(
             response="I'll run those commands",
@@ -179,7 +179,7 @@ def test_json_output_with_multiline_content():
 Line 2
 Line 3"""
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient(multiline_response)
 
         result = runner.invoke(cli, ["chat", "-p", "Get multiline", "--json"])
@@ -197,7 +197,7 @@ def test_json_output_with_special_characters():
 
     special_content = 'Special chars: "quotes", {braces}, [brackets], \t\n\n'
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient(special_content)
 
         result = runner.invoke(cli, ["chat", "-p", "Special chars", "--json"])
@@ -213,7 +213,7 @@ def test_json_output_with_empty_content():
     """Test --json flag handles empty response."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("")
 
         result = runner.invoke(cli, ["chat", "-p", "Empty", "--json"])
@@ -229,7 +229,7 @@ def test_json_output_error_handling():
     """Test --json flag handles errors gracefully."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_client = Mock()
         mock_client.chat_completion.side_effect = Exception("LLM failed")
         mock_factory.return_value = mock_client
@@ -254,7 +254,7 @@ def test_json_stream_outputs_multiple_json_objects():
     """Test --json-stream outputs multiple JSON objects."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Hello World")
 
         result = runner.invoke(cli, ["chat", "-p", "Say hello", "--json-stream"])
@@ -285,7 +285,7 @@ def test_json_stream_final_chunk_has_done_flag():
     """Test --json-stream final chunk has done=True."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Final response")
 
         result = runner.invoke(cli, ["chat", "-p", "Test", "--json-stream"])
@@ -304,7 +304,7 @@ def test_json_stream_includes_finish_reason_in_final_chunk():
     """Test --json-stream includes finish_reason in final chunk."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient(
             response="Response",
             finish_reason="stop",
@@ -326,7 +326,7 @@ def test_json_stream_with_tool_calls():
     """Test --json-stream handles tool calls in final chunk."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         tool_calls = create_sample_tool_calls()
         mock_factory.return_value = FakeLLMClient(
             response="Running tools",
@@ -353,7 +353,7 @@ def test_json_schema_all_required_fields_present():
     """Test JSON output contains all required fields."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Complete response")
 
         result = runner.invoke(cli, ["chat", "-p", "Test", "--json"])
@@ -372,7 +372,7 @@ def test_json_field_types():
     """Test JSON output field types are correct."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Typed response")
 
         result = runner.invoke(cli, ["chat", "-p", "Test", "--json"])
@@ -398,7 +398,7 @@ def test_json_with_model_override():
     """Test --json flag works with -m/--model flag."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Model response")
 
         result = runner.invoke(
@@ -416,7 +416,7 @@ def test_json_with_stdin_input():
     """Test --json flag works with stdin input."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Stdin processed")
 
         result = runner.invoke(cli, ["chat", "-p", "--json"], input="From stdin")
@@ -436,7 +436,7 @@ def test_json_output_unicode_content():
 
     unicode_content = "Unicode: 你好世界 🌍 Ñoño"
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient(unicode_content)
 
         result = runner.invoke(cli, ["chat", "-p", "Unicode", "--json"])
@@ -453,7 +453,7 @@ def test_json_output_very_long_content():
 
     long_content = "Word " * 10000  # Large response
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient(long_content)
 
         result = runner.invoke(cli, ["chat", "-p", "Long", "--json"])
@@ -468,7 +468,7 @@ def test_json_stream_empty_chunks():
     """Test --json-stream handles empty chunks gracefully."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("")
 
         result = runner.invoke(cli, ["chat", "-p", "Empty", "--json-stream"])
@@ -490,7 +490,7 @@ def test_print_command_with_json_format():
     """Test 'print' command with --output-format json."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Print command response")
 
         result = runner.invoke(
@@ -509,7 +509,7 @@ def test_print_command_with_stream_json_format():
     """Test 'print' command with --output-format stream-json."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Stream response")
 
         result = runner.invoke(
@@ -534,7 +534,7 @@ def test_print_command_with_stream_json_format():
 
 def test_json_formatter_helper():
     """Test JSON formatter helper function directly."""
-    from claude_code.cli.output import format_json_output, format_json_stream_chunk
+    from deep_code.cli.output import format_json_output, format_json_stream_chunk
 
     # Test basic JSON formatting with individual parameters
     json_str = format_json_output(
@@ -551,7 +551,7 @@ def test_json_formatter_helper():
 
 def test_json_stream_chunk_formatter():
     """Test JSON stream chunk formatter."""
-    from claude_code.cli.output import format_json_stream_chunk
+    from deep_code.cli.output import format_json_stream_chunk
 
     # Test content chunk
     chunk = format_json_stream_chunk(content="Hello", done=False)

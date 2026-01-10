@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from claude_code.core.context import (
+from deep_code.core.context import (
     ContextFormatter,
     FileContext,
     DirectoryContext,
@@ -266,7 +266,7 @@ def test_context_builder() -> None:
         file2 = Path(tmpdir, "file2.txt")
         file2.write_text("content2")
 
-        from claude_code.core.context import ContextBuilder
+        from deep_code.core.context import ContextBuilder
 
         builder = ContextBuilder()
         builder.add_file(str(file1))
@@ -285,7 +285,7 @@ def test_context_builder() -> None:
 
 def test_context_manager_create() -> None:
     """验证创建 ContextManager"""
-    from claude_code.core.context import ContextManager
+    from deep_code.core.context import ContextManager
 
     manager = ContextManager()
     assert manager is not None
@@ -293,7 +293,7 @@ def test_context_manager_create() -> None:
 
 def test_context_manager_load_file() -> None:
     """验证加载文件"""
-    from claude_code.core.context import ContextManager
+    from deep_code.core.context import ContextManager
 
     with TemporaryDirectory() as tmpdir:
         test_file = Path(tmpdir, "test.txt")
@@ -308,7 +308,7 @@ def test_context_manager_load_file() -> None:
 
 def test_context_manager_load_file_with_line_range() -> None:
     """验证加载文件带行号范围"""
-    from claude_code.core.context import ContextManager
+    from deep_code.core.context import ContextManager
 
     with TemporaryDirectory() as tmpdir:
         test_file = Path(tmpdir, "test.txt")
@@ -326,7 +326,7 @@ def test_context_manager_load_file_with_line_range() -> None:
 
 def test_context_manager_load_file_not_found() -> None:
     """验证加载不存在的文件"""
-    from claude_code.core.context import ContextManager, LoadError
+    from deep_code.core.context import ContextManager, LoadError
 
     manager = ContextManager()
 
@@ -336,7 +336,7 @@ def test_context_manager_load_file_not_found() -> None:
 
 def test_context_manager_load_file_encoding_error() -> None:
     """验证文件编码错误处理"""
-    from claude_code.core.context import ContextManager
+    from deep_code.core.context import ContextManager
 
     with TemporaryDirectory() as tmpdir:
         test_file = Path(tmpdir, "test.bin")
@@ -353,7 +353,7 @@ def test_context_manager_load_file_encoding_error() -> None:
 
 def test_context_manager_load_directory() -> None:
     """验证加载目录"""
-    from claude_code.core.context import ContextManager
+    from deep_code.core.context import ContextManager
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "file1.txt").write_text("content1")
@@ -367,7 +367,7 @@ def test_context_manager_load_directory() -> None:
 
 def test_context_manager_load_directory_recursive() -> None:
     """验证递归加载目录"""
-    from claude_code.core.context import ContextManager
+    from deep_code.core.context import ContextManager
 
     with TemporaryDirectory() as tmpdir:
         subdir = Path(tmpdir, "subdir")
@@ -383,7 +383,7 @@ def test_context_manager_load_directory_recursive() -> None:
 
 def test_context_manager_load_directory_not_found() -> None:
     """验证加载不存在的目录"""
-    from claude_code.core.context import ContextManager, LoadError
+    from deep_code.core.context import ContextManager, LoadError
 
     manager = ContextManager()
 
@@ -393,8 +393,8 @@ def test_context_manager_load_directory_not_found() -> None:
 
 def test_context_manager_load_file_from_reference() -> None:
     """验证从 FileReference 加载文件"""
-    from claude_code.core.context import ContextManager
-    from claude_code.interaction.parser import FileReference
+    from deep_code.core.context import ContextManager
+    from deep_code.interaction.parser import FileReference
 
     with TemporaryDirectory() as tmpdir:
         test_file = Path(tmpdir, "test.txt")
@@ -409,8 +409,8 @@ def test_context_manager_load_file_from_reference() -> None:
 
 def test_context_manager_load_directory_from_reference() -> None:
     """验证从 DirectoryReference 加载目录"""
-    from claude_code.core.context import ContextManager
-    from claude_code.interaction.parser import DirectoryReference
+    from deep_code.core.context import ContextManager
+    from deep_code.interaction.parser import DirectoryReference
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "file.txt").write_text("content")
@@ -424,7 +424,7 @@ def test_context_manager_load_directory_from_reference() -> None:
 
 def test_context_manager_max_file_size() -> None:
     """验证文件大小限制"""
-    from claude_code.core.context import ContextManager
+    from deep_code.core.context import ContextManager
 
     with TemporaryDirectory() as tmpdir:
         test_file = Path(tmpdir, "test.txt")
@@ -441,7 +441,7 @@ def test_context_manager_max_file_size() -> None:
 
 def test_context_manager_max_directory_files() -> None:
     """验证目录文件数量限制"""
-    from claude_code.core.context import ContextManager
+    from deep_code.core.context import ContextManager
 
     with TemporaryDirectory() as tmpdir:
         # Create many files
@@ -461,7 +461,7 @@ def test_context_manager_max_directory_files() -> None:
 
 def test_long_term_memory_create() -> None:
     """验证创建 LongTermMemory"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     memory = LongTermMemory()
     assert memory is not None
@@ -469,7 +469,7 @@ def test_long_term_memory_create() -> None:
 
 def test_long_term_memory_load_claude_md() -> None:
     """验证加载 CLAUDE.md"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         claude_md = Path(tmpdir, "CLAUDE.md")
@@ -484,7 +484,7 @@ def test_long_term_memory_load_claude_md() -> None:
 
 def test_long_term_memory_load_multiple_files() -> None:
     """验证加载多个长期记忆文件"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "CLAUDE.md").write_text("# Claude MD", encoding="utf-8")
@@ -502,7 +502,7 @@ def test_long_term_memory_load_multiple_files() -> None:
 
 def test_long_term_memory_missing_files() -> None:
     """验证处理缺失的长期记忆文件"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         # Only CLAUDE.md exists
@@ -518,7 +518,7 @@ def test_long_term_memory_missing_files() -> None:
 
 def test_long_term_memory_empty_directory() -> None:
     """验证空目录处理"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         memory = LongTermMemory()
@@ -531,7 +531,7 @@ def test_long_term_memory_empty_directory() -> None:
 
 def test_long_term_memory_get_formatted_content() -> None:
     """验证获取格式化的长期记忆内容"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "CLAUDE.md").write_text("# Project\n\nContent here", encoding="utf-8")
@@ -548,7 +548,7 @@ def test_long_term_memory_get_formatted_content() -> None:
 
 def test_long_term_memory_get_file_names() -> None:
     """验证获取已加载的文件名列表"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
@@ -565,7 +565,7 @@ def test_long_term_memory_get_file_names() -> None:
 
 def test_long_term_memory_has_file() -> None:
     """验证检查文件是否已加载"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
@@ -579,7 +579,7 @@ def test_long_term_memory_has_file() -> None:
 
 def test_long_term_memory_get_file() -> None:
     """验证获取特定文件内容"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
@@ -595,7 +595,7 @@ def test_long_term_memory_get_file() -> None:
 
 def test_long_term_memory_get_missing_file() -> None:
     """验证获取不存在的文件"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         memory = LongTermMemory()
@@ -608,7 +608,7 @@ def test_long_term_memory_get_missing_file() -> None:
 
 def test_long_term_memory_to_dict() -> None:
     """验证转换为字典"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
@@ -624,7 +624,7 @@ def test_long_term_memory_to_dict() -> None:
 
 def test_long_term_memory_load_custom_files() -> None:
     """验证加载自定义长期记忆文件"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "README.md").write_text("# Readme", encoding="utf-8")
@@ -640,7 +640,7 @@ def test_long_term_memory_load_custom_files() -> None:
 
 def test_long_term_memory_status_message() -> None:
     """验证状态消息"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "CLAUDE.md").write_text("# Guide", encoding="utf-8")
@@ -659,7 +659,7 @@ def test_long_term_memory_status_message() -> None:
 
 def test_modular_loader_create() -> None:
     """验证创建 ModularLoader"""
-    from claude_code.core.context import ModularLoader
+    from deep_code.core.context import ModularLoader
 
     loader = ModularLoader()
     assert loader is not None
@@ -667,7 +667,7 @@ def test_modular_loader_create() -> None:
 
 def test_modular_loader_load_with_imports() -> None:
     """验证加载带 @ 导入的文件"""
-    from claude_code.core.context import ModularLoader
+    from deep_code.core.context import ModularLoader
 
     with TemporaryDirectory() as tmpdir:
         # Create referenced file
@@ -688,7 +688,7 @@ def test_modular_loader_load_with_imports() -> None:
 
 def test_modular_loader_load_with_line_range_import() -> None:
     """验证加载带行号范围的 @ 导入"""
-    from claude_code.core.context import ModularLoader
+    from deep_code.core.context import ModularLoader
 
     with TemporaryDirectory() as tmpdir:
         # Create referenced file
@@ -712,7 +712,7 @@ def test_modular_loader_load_with_line_range_import() -> None:
 
 def test_modular_loader_multi_level_imports() -> None:
     """验证多层导入"""
-    from claude_code.core.context import ModularLoader
+    from deep_code.core.context import ModularLoader
 
     with TemporaryDirectory() as tmpdir:
         # Level 3: base file
@@ -734,7 +734,7 @@ def test_modular_loader_multi_level_imports() -> None:
 
 def test_modular_loader_circular_detection() -> None:
     """验证循环引用检测"""
-    from claude_code.core.context import ModularLoader, CircularImportError
+    from deep_code.core.context import ModularLoader, CircularImportError
 
     with TemporaryDirectory() as tmpdir:
         # File A imports B, B imports A
@@ -753,7 +753,7 @@ def test_modular_loader_circular_detection() -> None:
 
 def test_modular_loader_missing_import() -> None:
     """验证处理缺失的导入文件"""
-    from claude_code.core.context import ModularLoader
+    from deep_code.core.context import ModularLoader
 
     with TemporaryDirectory() as tmpdir:
         # Main file imports non-existent file
@@ -770,7 +770,7 @@ def test_modular_loader_missing_import() -> None:
 
 def test_modular_loader_directory_import() -> None:
     """验证目录导入"""
-    from claude_code.core.context import ModularLoader
+    from deep_code.core.context import ModularLoader
 
     with TemporaryDirectory() as tmpdir:
         # Create a subdirectory
@@ -792,7 +792,7 @@ def test_modular_loader_directory_import() -> None:
 
 def test_modular_loader_max_import_depth() -> None:
     """验证最大导入深度限制"""
-    from claude_code.core.context import ModularLoader
+    from deep_code.core.context import ModularLoader
 
     with TemporaryDirectory() as tmpdir:
         # Create chain of files
@@ -813,7 +813,7 @@ def test_modular_loader_max_import_depth() -> None:
 
 def test_modular_loader_import_tracker() -> None:
     """验证导入追踪"""
-    from claude_code.core.context import ModularLoader
+    from deep_code.core.context import ModularLoader
 
     with TemporaryDirectory() as tmpdir:
         Path(tmpdir, "base.md").write_text("# Base", encoding="utf-8")
@@ -828,7 +828,7 @@ def test_modular_loader_import_tracker() -> None:
 
 def test_long_term_memory_load_with_modular_imports() -> None:
     """验证 LongTermMemory 加载时处理模块化导入"""
-    from claude_code.core.context import LongTermMemory
+    from deep_code.core.context import LongTermMemory
 
     with TemporaryDirectory() as tmpdir:
         # Create referenced file
@@ -850,8 +850,8 @@ def test_long_term_memory_load_with_modular_imports() -> None:
 
 def test_context_manager_with_permission_allow_read() -> None:
     """验证权限允许时读取文件"""
-    from claude_code.core.context import ContextManager
-    from claude_code.security.permissions import (
+    from deep_code.core.context import ContextManager
+    from deep_code.security.permissions import (
         PermissionManager,
         PermissionRule,
         PermissionAction,
@@ -878,8 +878,8 @@ def test_context_manager_with_permission_allow_read() -> None:
 
 def test_context_manager_with_permission_deny_read() -> None:
     """验证权限拒绝时不能读取文件"""
-    from claude_code.core.context import ContextManager, LoadError
-    from claude_code.security.permissions import (
+    from deep_code.core.context import ContextManager, LoadError
+    from deep_code.security.permissions import (
         PermissionManager,
         PermissionRule,
         PermissionAction,
@@ -907,8 +907,8 @@ def test_context_manager_with_permission_deny_read() -> None:
 
 def test_context_manager_with_permission_ask_granted_read() -> None:
     """验证 ASK 权限通过时读取文件"""
-    from claude_code.core.context import ContextManager
-    from claude_code.security.permissions import (
+    from deep_code.core.context import ContextManager
+    from deep_code.security.permissions import (
         PermissionManager,
         PermissionRule,
         PermissionAction,
@@ -942,8 +942,8 @@ def test_context_manager_with_permission_ask_granted_read() -> None:
 
 def test_context_manager_with_permission_ask_denied_read() -> None:
     """验证 ASK 权限拒绝时不能读取文件"""
-    from claude_code.core.context import ContextManager, LoadError
-    from claude_code.security.permissions import (
+    from deep_code.core.context import ContextManager, LoadError
+    from deep_code.security.permissions import (
         PermissionManager,
         PermissionRule,
         PermissionAction,
@@ -978,7 +978,7 @@ def test_context_manager_with_permission_ask_denied_read() -> None:
 
 def test_context_manager_without_permission_manager() -> None:
     """验证没有权限管理器时正常读取"""
-    from claude_code.core.context import ContextManager
+    from deep_code.core.context import ContextManager
 
     with TemporaryDirectory() as tmpdir:
         test_file = Path(tmpdir, "test.txt")

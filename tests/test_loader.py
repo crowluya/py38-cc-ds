@@ -12,7 +12,7 @@ import shutil
 
 import pytest
 
-from claude_code.config.loader import ConfigLoader, load_settings
+from deep_code.config.loader import ConfigLoader, load_settings
 
 
 @pytest.fixture
@@ -315,7 +315,7 @@ class TestEnvFile:
         """验证简单的 .env 文件解析"""
         from pathlib import Path
         import tempfile
-        from claude_code.config.loader import _parse_env_file
+        from deep_code.config.loader import _parse_env_file
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
             f.write("KEY1=value1\n")
@@ -339,7 +339,7 @@ class TestEnvFile:
         """验证带引号的 .env 文件解析"""
         from pathlib import Path
         import tempfile
-        from claude_code.config.loader import _parse_env_file
+        from deep_code.config.loader import _parse_env_file
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
             f.write('KEY1="value with spaces"\n')
@@ -359,7 +359,7 @@ class TestEnvFile:
         """验证空 .env 文件解析"""
         from pathlib import Path
         import tempfile
-        from claude_code.config.loader import _parse_env_file
+        from deep_code.config.loader import _parse_env_file
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
             f.write("# Only comments\n")
@@ -375,7 +375,7 @@ class TestEnvFile:
     def test_parse_env_file_nonexistent(self) -> None:
         """验证不存在的 .env 文件解析"""
         from pathlib import Path
-        from claude_code.config.loader import _parse_env_file
+        from deep_code.config.loader import _parse_env_file
 
         result = _parse_env_file(Path("/nonexistent/path/.env"))
         assert result == {}

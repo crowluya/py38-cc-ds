@@ -12,7 +12,7 @@ from typing import Optional
 
 import pytest
 
-from claude_code.config.paths import (
+from deep_code.config.paths import (
     PathResolver,
     ensure_directory,
     expand_user_path,

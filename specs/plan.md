@@ -73,7 +73,7 @@
 
 ```
 py38-claude-code/
-├── claude_code/              # 主包
+├── deep_code/              # 主包
 │   ├── __init__.py
 │   ├── core/                 # 核心模块
 │   │   ├── __init__.py
@@ -117,7 +117,7 @@ py38-claude-code/
 │   ├── test_interaction/
 │   ├── test_llm/
 │   └── test_config/
-├── .claude/                 # 项目配置
+├── .deepcode/                 # 项目配置
 │   ├── settings.json
 │   ├── commands/
 │   ├── skills/

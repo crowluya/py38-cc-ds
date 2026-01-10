@@ -9,7 +9,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, MagicMock
 
-from claude_code.core.tools.base import (
+from deep_code.core.tools.base import (
     Tool,
     ToolCall,
     ToolResult,
@@ -17,8 +17,8 @@ from claude_code.core.tools.base import (
     ToolParameter,
     ToolError,
 )
-from claude_code.core.tools.registry import ToolRegistry
-from claude_code.core.tool_executor import ToolExecutor
+from deep_code.core.tools.registry import ToolRegistry
+from deep_code.core.tool_executor import ToolExecutor
 
 
 class MockTool(Tool):
@@ -443,7 +443,7 @@ class TestToolExecutorIntegration:
 
     def test_with_read_tool(self):
         """Test executor with Read tool."""
-        from claude_code.core.tools.read import ReadTool
+        from deep_code.core.tools.read import ReadTool
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
             f.write("Hello World")
@@ -470,7 +470,7 @@ class TestToolExecutorIntegration:
 
     def test_with_write_tool(self):
         """Test executor with Write tool."""
-        from claude_code.core.tools.write import WriteTool
+        from deep_code.core.tools.write import WriteTool
 
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = str(Path(temp_dir) / "test.txt")
@@ -495,7 +495,7 @@ class TestToolExecutorIntegration:
 
     def test_with_glob_tool(self):
         """Test executor with Glob tool."""
-        from claude_code.core.tools.glob import GlobTool
+        from deep_code.core.tools.glob import GlobTool
 
         with tempfile.TemporaryDirectory() as temp_dir:
             (Path(temp_dir) / "test1.py").write_text("# test1")

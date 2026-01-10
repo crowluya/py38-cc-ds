@@ -17,15 +17,15 @@ def test_python_version() -> None:
 
 
 def test_package_importable() -> None:
-    """验证 claude_code 包可导入"""
-    import claude_code  # noqa: F401
+    """验证 deep_code 包可导入"""
+    import deep_code  # noqa: F401
 
-    assert claude_code.__name__ == "claude_code"
+    assert deep_code.__name__ == "deep_code"
 
 
 def test_submodules_exist() -> None:
     """验证核心子模块存在"""
-    import claude_code
+    import deep_code
 
     expected_submodules = [
         "core",
@@ -39,9 +39,9 @@ def test_submodules_exist() -> None:
 
     for submodule in expected_submodules:
         # 尝试导入子模块
-        module_path = f"claude_code.{submodule}"
+        module_path = f"deep_code.{submodule}"
         __import__(module_path)
-        assert hasattr(claude_code, submodule), f"子模块 {submodule} 不存在"
+        assert hasattr(deep_code, submodule), f"子模块 {submodule} 不存在"
 
 
 def test_tests_importable() -> None:

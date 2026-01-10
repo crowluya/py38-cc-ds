@@ -10,7 +10,7 @@ import tempfile
 import pytest
 from pathlib import Path
 
-from claude_code.core.tools.read import ReadTool
+from deep_code.core.tools.read import ReadTool
 
 
 class TestReadTool:
@@ -319,7 +319,7 @@ class TestReadToolValidation:
     def test_missing_file_path(self):
         """Test that missing file_path raises error."""
         tool = ReadTool()
-        from claude_code.core.tools.base import ToolValidationError
+        from deep_code.core.tools.base import ToolValidationError
 
         with pytest.raises(ToolValidationError):
             tool.execute({})

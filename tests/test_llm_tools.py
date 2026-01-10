@@ -9,7 +9,7 @@ import pytest
 from typing import Any, Dict, Iterator, List, Optional
 from unittest.mock import MagicMock, patch
 
-from claude_code.llm.client import LLMClient
+from deep_code.llm.client import LLMClient
 
 
 class MockToolClient(LLMClient):

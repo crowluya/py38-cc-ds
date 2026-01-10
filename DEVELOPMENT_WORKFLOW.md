@@ -97,7 +97,7 @@ Red → Green → Refactor
 #### 1.1 项目骨架搭建
 **工作流程**：
 1. **创建项目结构**（一次性）
-   - 创建所有目录（`claude_code/`, `tests/` 等）
+   - 创建所有目录（`deep_code/`, `tests/` 等）
    - 创建 `__init__.py` 文件
    - 创建 `setup.py`、`README.md`
 
@@ -353,7 +353,7 @@ def test_feature_error_case():
     # ...
 
 # 2. Green 阶段：写实现
-# claude_code/feature.py
+# deep_code/feature.py
 class Feature:
     def method(self):
         # 最小实现

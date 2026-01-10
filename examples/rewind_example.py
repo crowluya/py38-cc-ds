@@ -10,9 +10,9 @@ Python 3.8.10 compatible
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from claude_code.core.agent import Agent, AgentConfig, Message, MessageRole
-from claude_code.security.checkpoint import CheckpointManager
-from claude_code.cli.rewind import rewind_command, RewindMode, RewindError
+from deep_code.core.agent import Agent, AgentConfig, Message, MessageRole
+from deep_code.security.checkpoint import CheckpointManager
+from deep_code.cli.rewind import rewind_command, RewindMode, RewindError
 
 
 def example_basic_rewind():

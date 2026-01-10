@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from claude_code.llm.client import (
+from deep_code.llm.client import (
     LLMClient,
     LLMClientError,
     LLMConfigError,

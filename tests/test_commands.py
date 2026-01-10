@@ -11,7 +11,7 @@ from typing import Optional
 
 import pytest
 
-from claude_code.interaction.commands import (
+from deep_code.interaction.commands import (
     CommandArgumentError,
     CommandFrontmatter,
     SlashCommand,

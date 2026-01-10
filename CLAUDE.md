@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **planning repository** for "Claude Code Python MVP" - an AI-native development workflow engine written in Python 3.8.10, designed to run on Windows 7 in internal network environments. The project implements Claude Code's core design patterns including SDD (Spec-Driven Development), context management, slash commands, hooks, and security controls.
+This is a **planning repository** for "DeepCode" - an AI-native development workflow engine written in Python 3.8.10, designed to run on Windows 7 in internal network environments. The project implements Claude Code's core design patterns including SDD (Spec-Driven Development), context management, slash commands, hooks, and security controls.
 
 **Current Status**: Planning/spec phase. No production code exists yet.
 
@@ -22,7 +22,7 @@ This is a **planning repository** for "Claude Code Python MVP" - an AI-native de
 ## Project Structure (Planned)
 
 ```
-claude_code/
+deep_code/
 ├── core/           # Agent engine, context, executor, SDD
 ├── interaction/    # Parser (@/!), commands, hooks
 ├── security/       # Permissions, sandbox, checkpoint
@@ -77,7 +77,7 @@ pytest
 pytest tests/test_parser.py
 
 # Run with coverage
-pytest --cov=claude_code
+pytest --cov=deep_code
 ```
 
 ### Installation (Python 3.8.10)
@@ -92,10 +92,10 @@ pip install --no-index --find-links wheels/ -r requirements.txt
 ### Linting/Formatting
 ```bash
 # Format code (if using black)
-black claude_code/
+black deep_code/
 
 # Type checking (if using mypy)
-mypy claude_code/
+mypy deep_code/
 ```
 
 ## Architecture Highlights
@@ -109,9 +109,9 @@ Uses **abstract base class + factory** for flexibility:
 
 ### Configuration Layers (Priority Order)
 1. CLI arguments (highest)
-2. Project local: `.claude/settings.local.json`
-3. Project shared: `.claude/settings.json`
-4. User global: `~/.claude/settings.json` (lowest)
+2. Project local: `.deepcode/settings.local.json`
+3. Project shared: `.deepcode/settings.json`
+4. User global: `~/.deepcode/settings.json` (lowest)
 
 ### Interaction Model
 - `@file` / `@dir` - Context injection (Git-aware, respects .gitignore)

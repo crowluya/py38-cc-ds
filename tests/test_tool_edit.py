@@ -9,7 +9,7 @@ import tempfile
 import pytest
 from pathlib import Path
 
-from claude_code.core.tools.edit import EditTool
+from deep_code.core.tools.edit import EditTool
 
 
 class TestEditTool:
@@ -371,7 +371,7 @@ class TestEditToolValidation:
     def test_missing_file_path(self):
         """Test that missing file_path raises error."""
         tool = EditTool()
-        from claude_code.core.tools.base import ToolValidationError
+        from deep_code.core.tools.base import ToolValidationError
 
         with pytest.raises(ToolValidationError):
             tool.execute({
@@ -382,7 +382,7 @@ class TestEditToolValidation:
     def test_missing_old_string(self):
         """Test that missing old_string raises error."""
         tool = EditTool()
-        from claude_code.core.tools.base import ToolValidationError
+        from deep_code.core.tools.base import ToolValidationError
 
         with pytest.raises(ToolValidationError):
             tool.execute({
@@ -393,7 +393,7 @@ class TestEditToolValidation:
     def test_missing_new_string(self):
         """Test that missing new_string raises error."""
         tool = EditTool()
-        from claude_code.core.tools.base import ToolValidationError
+        from deep_code.core.tools.base import ToolValidationError
 
         with pytest.raises(ToolValidationError):
             tool.execute({

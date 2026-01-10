@@ -8,15 +8,15 @@ import pytest
 from typing import Any, Dict, Optional
 from unittest.mock import Mock, MagicMock, patch
 
-from claude_code.core.tools.base import (
+from deep_code.core.tools.base import (
     Tool,
     ToolCategory,
     ToolParameter,
     ToolResult,
     ToolPermissionError,
 )
-from claude_code.core.tools.registry import ToolRegistry
-from claude_code.security.permissions import (
+from deep_code.core.tools.registry import ToolRegistry
+from deep_code.security.permissions import (
     PermissionManager,
     PermissionRule,
     PermissionAction,
@@ -156,7 +156,7 @@ class TestToolExecutor:
 
     def test_executor_initialization(self):
         """Test executor initialization."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         executor = ToolExecutor(registry)
@@ -166,7 +166,7 @@ class TestToolExecutor:
 
     def test_executor_with_custom_permission_manager(self):
         """Test executor with custom permission manager."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         perm_manager = PermissionManager()
@@ -176,7 +176,7 @@ class TestToolExecutor:
 
     def test_execute_tool_without_permission_requirement(self):
         """Test executing tool that doesn't require permission."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockNoPermissionTool())
@@ -188,7 +188,7 @@ class TestToolExecutor:
 
     def test_execute_tool_permission_granted(self):
         """Test executing tool with permission granted."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockReadTool())
@@ -207,7 +207,7 @@ class TestToolExecutor:
 
     def test_execute_tool_permission_denied(self):
         """Test executing tool with permission denied."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockReadTool())
@@ -227,7 +227,7 @@ class TestToolExecutor:
 
     def test_execute_tool_permission_ask_with_callback(self):
         """Test executing tool with ASK permission and approval callback."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockReadTool())
@@ -254,7 +254,7 @@ class TestToolExecutor:
 
     def test_execute_tool_permission_ask_denied_by_callback(self):
         """Test executing tool with ASK permission denied by callback."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockReadTool())
@@ -281,7 +281,7 @@ class TestToolExecutor:
 
     def test_execute_tool_not_found(self):
         """Test executing non-existent tool."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         executor = ToolExecutor(registry)
@@ -297,49 +297,49 @@ class TestToolExecutorDomainMapping:
 
     def test_read_tool_maps_to_file_read(self):
         """Test Read tool maps to FILE_READ domain."""
-        from claude_code.core.tools.executor import ToolExecutor, get_permission_domain
+        from deep_code.core.tools.executor import ToolExecutor, get_permission_domain
 
         domain = get_permission_domain("Read", {"file_path": "/tmp/test.txt"})
         assert domain == PermissionDomain.FILE_READ
 
     def test_write_tool_maps_to_file_write(self):
         """Test Write tool maps to FILE_WRITE domain."""
-        from claude_code.core.tools.executor import get_permission_domain
+        from deep_code.core.tools.executor import get_permission_domain
 
         domain = get_permission_domain("Write", {"file_path": "/tmp/test.txt"})
         assert domain == PermissionDomain.FILE_WRITE
 
     def test_edit_tool_maps_to_file_write(self):
         """Test Edit tool maps to FILE_WRITE domain."""
-        from claude_code.core.tools.executor import get_permission_domain
+        from deep_code.core.tools.executor import get_permission_domain
 
         domain = get_permission_domain("Edit", {"file_path": "/tmp/test.txt"})
         assert domain == PermissionDomain.FILE_WRITE
 
     def test_bash_tool_maps_to_command(self):
         """Test Bash tool maps to COMMAND domain."""
-        from claude_code.core.tools.executor import get_permission_domain
+        from deep_code.core.tools.executor import get_permission_domain
 
         domain = get_permission_domain("Bash", {"command": "ls -la"})
         assert domain == PermissionDomain.COMMAND
 
     def test_glob_tool_maps_to_file_read(self):
         """Test Glob tool maps to FILE_READ domain."""
-        from claude_code.core.tools.executor import get_permission_domain
+        from deep_code.core.tools.executor import get_permission_domain
 
         domain = get_permission_domain("Glob", {"pattern": "*.py"})
         assert domain == PermissionDomain.FILE_READ
 
     def test_grep_tool_maps_to_file_read(self):
         """Test Grep tool maps to FILE_READ domain."""
-        from claude_code.core.tools.executor import get_permission_domain
+        from deep_code.core.tools.executor import get_permission_domain
 
         domain = get_permission_domain("Grep", {"pattern": "test"})
         assert domain == PermissionDomain.FILE_READ
 
     def test_unknown_tool_returns_none(self):
         """Test unknown tool returns None domain."""
-        from claude_code.core.tools.executor import get_permission_domain
+        from deep_code.core.tools.executor import get_permission_domain
 
         domain = get_permission_domain("UnknownTool", {})
         assert domain is None
@@ -350,28 +350,28 @@ class TestToolExecutorTargetExtraction:
 
     def test_extract_target_file_path(self):
         """Test extracting file_path as target."""
-        from claude_code.core.tools.executor import get_permission_target
+        from deep_code.core.tools.executor import get_permission_target
 
         target = get_permission_target("Read", {"file_path": "/tmp/test.txt"})
         assert target == "/tmp/test.txt"
 
     def test_extract_target_command(self):
         """Test extracting command as target."""
-        from claude_code.core.tools.executor import get_permission_target
+        from deep_code.core.tools.executor import get_permission_target
 
         target = get_permission_target("Bash", {"command": "ls -la"})
         assert target == "ls -la"
 
     def test_extract_target_pattern(self):
         """Test extracting pattern as target."""
-        from claude_code.core.tools.executor import get_permission_target
+        from deep_code.core.tools.executor import get_permission_target
 
         target = get_permission_target("Glob", {"pattern": "*.py", "path": "/src"})
         assert target == "/src/*.py" or target == "*.py"
 
     def test_extract_target_default(self):
         """Test default target when no specific field found."""
-        from claude_code.core.tools.executor import get_permission_target
+        from deep_code.core.tools.executor import get_permission_target
 
         target = get_permission_target("Unknown", {"foo": "bar"})
         assert target == "*"
@@ -382,7 +382,7 @@ class TestToolExecutorAllowDenyRules:
 
     def test_allow_specific_file(self):
         """Test allowing specific file access."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockReadTool())
@@ -414,7 +414,7 @@ class TestToolExecutorAllowDenyRules:
 
     def test_deny_dangerous_commands(self):
         """Test denying dangerous commands."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockBashTool())
@@ -450,7 +450,7 @@ class TestToolExecutorDangerousOperations:
 
     def test_dangerous_tool_requires_confirmation(self):
         """Test that dangerous tools require confirmation."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockWriteTool())
@@ -483,7 +483,7 @@ class TestToolExecutorDangerousOperations:
 
     def test_is_dangerous_operation(self):
         """Test checking if operation is dangerous."""
-        from claude_code.core.tools.executor import is_dangerous_operation
+        from deep_code.core.tools.executor import is_dangerous_operation
 
         # Dangerous commands
         assert is_dangerous_operation("Bash", {"command": "rm -rf /"}) is True
@@ -506,7 +506,7 @@ class TestToolExecutorAuditLog:
 
     def test_audit_log_records_executions(self):
         """Test that executions are recorded in audit log."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockReadTool())
@@ -528,7 +528,7 @@ class TestToolExecutorAuditLog:
 
     def test_audit_log_records_denials(self):
         """Test that denials are recorded in audit log."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockReadTool())
@@ -553,7 +553,7 @@ class TestToolExecutorIntegration:
 
     def test_full_workflow(self):
         """Test full workflow with multiple tools and permissions."""
-        from claude_code.core.tools.executor import ToolExecutor
+        from deep_code.core.tools.executor import ToolExecutor
 
         registry = ToolRegistry()
         registry.register(MockReadTool())

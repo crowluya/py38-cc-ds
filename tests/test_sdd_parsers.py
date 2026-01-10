@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import List
 import pytest
 
-from claude_code.sdd.models import Task, Phase, Dependency, TaskStatus
-from claude_code.sdd.parser import (
+from deep_code.sdd.models import Task, Phase, Dependency, TaskStatus
+from deep_code.sdd.parser import (
     parse_spec_md,
     parse_plan_md,
     parse_tasks_md,
@@ -77,7 +77,7 @@ class TestExtractTaskFromMarkdown:
         """Test extracting task with file target."""
         markdown = """
 - [ ] **T041 Gitignore 感知目录加载**
-  - **产物**：`claude_code/core/context.py`
+  - **产物**：`deep_code/core/context.py`
 """
         task = extract_task_from_markdown(markdown)
         assert task is not None
@@ -340,7 +340,7 @@ class TestParsePlanMd:
 ### 目录结构
 
 ```
-claude_code/
+deep_code/
 ├── core/
 └── cli/
 ```
@@ -430,8 +430,8 @@ class TestParserIntegration:
 
 - [ ] **T001 初始化项目目录结构（骨架）**
   - **依赖**：无
-  - **产物**：`claude_code/` 主包与子包目录、`tests/` 目录
-  - **验证**：`python -c "import claude_code"`
+  - **产物**：`deep_code/` 主包与子包目录、`tests/` 目录
+  - **验证**：`python -c "import deep_code"`
 
 - [ ] **T002 依赖清单与锁定（requirements）**
   - **依赖**：T001
@@ -442,8 +442,8 @@ class TestParserIntegration:
 
 - [ ] **T010 CLI 入口（click）最小命令树（TDD）**
   - **依赖**：T003, T004
-  - **产物**：`claude_code/cli/main.py`
-  - **验证**：`python -m claude_code.cli.main --help`
+  - **产物**：`deep_code/cli/main.py`
+  - **验证**：`python -m deep_code.cli.main --help`
 
 - [ ] **T011 终端输出封装（rich）[P]（TDD）**
   - **依赖**：T010

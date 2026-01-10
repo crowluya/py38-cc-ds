@@ -13,7 +13,7 @@ class TestErrorCode:
 
     def test_error_codes_defined(self):
         """Test that error codes are defined."""
-        from claude_code.core.errors import ErrorCode
+        from deep_code.core.errors import ErrorCode
 
         assert hasattr(ErrorCode, "TOOL_NOT_FOUND")
         assert hasattr(ErrorCode, "PERMISSION_DENIED")
@@ -27,7 +27,7 @@ class TestErrorCode:
 
     def test_error_code_values_unique(self):
         """Test that error code values are unique."""
-        from claude_code.core.errors import ErrorCode
+        from deep_code.core.errors import ErrorCode
 
         values = [e.value for e in ErrorCode]
         assert len(values) == len(set(values))
@@ -38,7 +38,7 @@ class TestToolError:
 
     def test_create_tool_error(self):
         """Test creating a tool error."""
-        from claude_code.core.errors import ToolError, ErrorCode
+        from deep_code.core.errors import ToolError, ErrorCode
 
         error = ToolError(
             code=ErrorCode.FILE_NOT_FOUND,
@@ -52,7 +52,7 @@ class TestToolError:
 
     def test_tool_error_with_details(self):
         """Test tool error with additional details."""
-        from claude_code.core.errors import ToolError, ErrorCode
+        from deep_code.core.errors import ToolError, ErrorCode
 
         error = ToolError(
             code=ErrorCode.VALIDATION_ERROR,
@@ -66,7 +66,7 @@ class TestToolError:
 
     def test_tool_error_with_suggestion(self):
         """Test tool error with recovery suggestion."""
-        from claude_code.core.errors import ToolError, ErrorCode
+        from deep_code.core.errors import ToolError, ErrorCode
 
         error = ToolError(
             code=ErrorCode.FILE_NOT_FOUND,
@@ -80,7 +80,7 @@ class TestToolError:
 
     def test_tool_error_to_dict(self):
         """Test converting tool error to dictionary."""
-        from claude_code.core.errors import ToolError, ErrorCode
+        from deep_code.core.errors import ToolError, ErrorCode
 
         error = ToolError(
             code=ErrorCode.PERMISSION_DENIED,
@@ -98,7 +98,7 @@ class TestToolError:
 
     def test_tool_error_str(self):
         """Test string representation of tool error."""
-        from claude_code.core.errors import ToolError, ErrorCode
+        from deep_code.core.errors import ToolError, ErrorCode
 
         error = ToolError(
             code=ErrorCode.TIMEOUT,
@@ -111,7 +111,7 @@ class TestToolError:
 
     def test_tool_error_is_recoverable(self):
         """Test checking if error is recoverable."""
-        from claude_code.core.errors import ToolError, ErrorCode
+        from deep_code.core.errors import ToolError, ErrorCode
 
         # Recoverable error
         error1 = ToolError(
@@ -137,7 +137,7 @@ class TestErrorFormatter:
 
     def test_format_error_simple(self):
         """Test formatting a simple error."""
-        from claude_code.core.errors import ToolError, ErrorCode, format_error
+        from deep_code.core.errors import ToolError, ErrorCode, format_error
 
         error = ToolError(
             code=ErrorCode.FILE_NOT_FOUND,
@@ -152,7 +152,7 @@ class TestErrorFormatter:
 
     def test_format_error_with_suggestion(self):
         """Test formatting error with suggestion."""
-        from claude_code.core.errors import ToolError, ErrorCode, format_error
+        from deep_code.core.errors import ToolError, ErrorCode, format_error
 
         error = ToolError(
             code=ErrorCode.FILE_NOT_FOUND,
@@ -167,7 +167,7 @@ class TestErrorFormatter:
 
     def test_format_error_verbose(self):
         """Test verbose error formatting."""
-        from claude_code.core.errors import ToolError, ErrorCode, format_error
+        from deep_code.core.errors import ToolError, ErrorCode, format_error
 
         error = ToolError(
             code=ErrorCode.VALIDATION_ERROR,
@@ -182,7 +182,7 @@ class TestErrorFormatter:
 
     def test_format_error_for_user(self):
         """Test user-friendly error formatting."""
-        from claude_code.core.errors import ToolError, ErrorCode, format_error_for_user
+        from deep_code.core.errors import ToolError, ErrorCode, format_error_for_user
 
         error = ToolError(
             code=ErrorCode.PERMISSION_DENIED,
@@ -202,7 +202,7 @@ class TestErrorSuggestions:
 
     def test_get_suggestion_file_not_found(self):
         """Test suggestion for file not found error."""
-        from claude_code.core.errors import ErrorCode, get_error_suggestion
+        from deep_code.core.errors import ErrorCode, get_error_suggestion
 
         suggestion = get_error_suggestion(
             ErrorCode.FILE_NOT_FOUND,
@@ -215,7 +215,7 @@ class TestErrorSuggestions:
 
     def test_get_suggestion_permission_denied(self):
         """Test suggestion for permission denied error."""
-        from claude_code.core.errors import ErrorCode, get_error_suggestion
+        from deep_code.core.errors import ErrorCode, get_error_suggestion
 
         suggestion = get_error_suggestion(
             ErrorCode.PERMISSION_DENIED,
@@ -227,7 +227,7 @@ class TestErrorSuggestions:
 
     def test_get_suggestion_timeout(self):
         """Test suggestion for timeout error."""
-        from claude_code.core.errors import ErrorCode, get_error_suggestion
+        from deep_code.core.errors import ErrorCode, get_error_suggestion
 
         suggestion = get_error_suggestion(
             ErrorCode.TIMEOUT,
@@ -239,7 +239,7 @@ class TestErrorSuggestions:
 
     def test_get_suggestion_validation_error(self):
         """Test suggestion for validation error."""
-        from claude_code.core.errors import ErrorCode, get_error_suggestion
+        from deep_code.core.errors import ErrorCode, get_error_suggestion
 
         suggestion = get_error_suggestion(
             ErrorCode.VALIDATION_ERROR,
@@ -251,7 +251,7 @@ class TestErrorSuggestions:
 
     def test_get_suggestion_command_failed(self):
         """Test suggestion for command failed error."""
-        from claude_code.core.errors import ErrorCode, get_error_suggestion
+        from deep_code.core.errors import ErrorCode, get_error_suggestion
 
         suggestion = get_error_suggestion(
             ErrorCode.COMMAND_FAILED,
@@ -267,7 +267,7 @@ class TestErrorFactory:
 
     def test_create_file_not_found_error(self):
         """Test creating file not found error."""
-        from claude_code.core.errors import create_file_not_found_error
+        from deep_code.core.errors import create_file_not_found_error
 
         error = create_file_not_found_error("Read", "/tmp/missing.txt")
 
@@ -277,7 +277,7 @@ class TestErrorFactory:
 
     def test_create_permission_denied_error(self):
         """Test creating permission denied error."""
-        from claude_code.core.errors import create_permission_denied_error
+        from deep_code.core.errors import create_permission_denied_error
 
         error = create_permission_denied_error("Write", "/etc/passwd")
 
@@ -286,7 +286,7 @@ class TestErrorFactory:
 
     def test_create_validation_error(self):
         """Test creating validation error."""
-        from claude_code.core.errors import create_validation_error
+        from deep_code.core.errors import create_validation_error
 
         error = create_validation_error(
             "Write",
@@ -299,7 +299,7 @@ class TestErrorFactory:
 
     def test_create_timeout_error(self):
         """Test creating timeout error."""
-        from claude_code.core.errors import create_timeout_error
+        from deep_code.core.errors import create_timeout_error
 
         error = create_timeout_error("Bash", "long_running_command", timeout_ms=30000)
 
@@ -308,7 +308,7 @@ class TestErrorFactory:
 
     def test_create_command_failed_error(self):
         """Test creating command failed error."""
-        from claude_code.core.errors import create_command_failed_error
+        from deep_code.core.errors import create_command_failed_error
 
         error = create_command_failed_error(
             "Bash",
@@ -326,7 +326,7 @@ class TestErrorResult:
 
     def test_error_to_tool_result(self):
         """Test converting error to ToolResult."""
-        from claude_code.core.errors import ToolError, ErrorCode, error_to_result
+        from deep_code.core.errors import ToolError, ErrorCode, error_to_result
 
         error = ToolError(
             code=ErrorCode.FILE_NOT_FOUND,
@@ -345,7 +345,7 @@ class TestErrorResult:
 
     def test_error_result_includes_suggestion(self):
         """Test that error result includes suggestion in output."""
-        from claude_code.core.errors import ToolError, ErrorCode, error_to_result
+        from deep_code.core.errors import ToolError, ErrorCode, error_to_result
 
         error = ToolError(
             code=ErrorCode.PERMISSION_DENIED,
@@ -365,7 +365,7 @@ class TestErrorChaining:
 
     def test_wrap_exception(self):
         """Test wrapping a standard exception."""
-        from claude_code.core.errors import wrap_exception
+        from deep_code.core.errors import wrap_exception
 
         try:
             raise FileNotFoundError("No such file: /tmp/test.txt")
@@ -378,7 +378,7 @@ class TestErrorChaining:
 
     def test_wrap_permission_error(self):
         """Test wrapping a permission error."""
-        from claude_code.core.errors import wrap_exception
+        from deep_code.core.errors import wrap_exception
 
         try:
             raise PermissionError("Access denied")
@@ -389,7 +389,7 @@ class TestErrorChaining:
 
     def test_wrap_timeout_error(self):
         """Test wrapping a timeout error."""
-        from claude_code.core.errors import wrap_exception
+        from deep_code.core.errors import wrap_exception
         import subprocess
 
         try:
@@ -401,7 +401,7 @@ class TestErrorChaining:
 
     def test_wrap_generic_exception(self):
         """Test wrapping a generic exception."""
-        from claude_code.core.errors import wrap_exception
+        from deep_code.core.errors import wrap_exception
 
         try:
             raise ValueError("Something went wrong")
@@ -417,7 +417,7 @@ class TestErrorIntegration:
 
     def test_full_error_workflow(self):
         """Test full error handling workflow."""
-        from claude_code.core.errors import (
+        from deep_code.core.errors import (
             create_file_not_found_error,
             format_error,
             format_error_for_user,
@@ -442,11 +442,11 @@ class TestErrorIntegration:
 
     def test_error_handling_in_executor(self):
         """Test error handling integration with executor."""
-        from claude_code.core.errors import ToolError, ErrorCode
-        from claude_code.core.tools.base import Tool, ToolResult, ToolCategory
-        from claude_code.core.tools.registry import ToolRegistry
-        from claude_code.core.tools.executor import ToolExecutor
-        from claude_code.security.permissions import (
+        from deep_code.core.errors import ToolError, ErrorCode
+        from deep_code.core.tools.base import Tool, ToolResult, ToolCategory
+        from deep_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.executor import ToolExecutor
+        from deep_code.security.permissions import (
             PermissionManager,
             PermissionRule,
             PermissionAction,

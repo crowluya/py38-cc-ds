@@ -9,7 +9,7 @@ import pytest
 from pathlib import Path
 
 # Import models to be tested
-from claude_code.sdd.models import Task, Phase, Dependency, TaskStatus
+from deep_code.sdd.models import Task, Phase, Dependency, TaskStatus
 
 
 class TestTaskStatus:
@@ -129,10 +129,10 @@ class TestTask:
         task = Task(
             id="T005",
             description="Implement parser",
-            file="claude_code/interaction/parser.py",
+            file="deep_code/interaction/parser.py",
             function="parse_context_ref"
         )
-        assert task.file == "claude_code/interaction/parser.py"
+        assert task.file == "deep_code/interaction/parser.py"
         assert task.function == "parse_context_ref"
 
     def test_task_status_update(self) -> None:
@@ -155,8 +155,8 @@ class TestTaskMarkdownParsing:
         markdown = """
 - [ ] **T001 初始化项目目录结构（骨架）**
   - **依赖**：无
-  - **产物**：`claude_code/` 主包与子包目录
-  - **验证**：`python -c "import claude_code"`
+  - **产物**：`deep_code/` 主包与子包目录
+  - **验证**：`python -c "import deep_code"`
 """
         # This will be implemented in parser.py
         # For now, we test the model structure
@@ -357,7 +357,7 @@ class TestTaskMarkdownStructure:
 - [ ] **T001 初始化项目目录**
   - **依赖**：无
   - **产物**：目录结构
-  - **验证**：python -c "import claude_code"
+  - **验证**：python -c "import deep_code"
 
 - [ ] **T002 依赖清单**
   - **依赖**：T001

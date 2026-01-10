@@ -11,7 +11,7 @@ from typing import List
 
 import pytest
 
-from claude_code.interaction.directory_loader import DirectoryLoader, DirectoryEntry
+from deep_code.interaction.directory_loader import DirectoryLoader, DirectoryEntry
 
 
 def test_loader_create() -> None:

@@ -8,9 +8,9 @@ from typing import Any, Dict, List
 
 import pytest
 
-from claude_code.config.settings import LLMSettings, Settings
-from claude_code.llm.client import LLMClient, LLMConfigError
-from claude_code.llm.factory import (
+from deep_code.config.settings import LLMSettings, Settings
+from deep_code.llm.client import LLMClient, LLMConfigError
+from deep_code.llm.factory import (
     LLMClientFactory,
     create_llm_client,
 )

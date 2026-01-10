@@ -9,7 +9,7 @@ import os
 from typing import Any, Dict, List, Optional
 from unittest.mock import Mock, MagicMock, patch
 
-from claude_code.core.tools.base import Tool, ToolCategory, ToolResult, ToolParameter
+from deep_code.core.tools.base import Tool, ToolCategory, ToolResult, ToolParameter
 
 
 class TestReadImageTool:
@@ -17,7 +17,7 @@ class TestReadImageTool:
 
     def test_tool_properties(self):
         """Test tool basic properties."""
-        from claude_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.ocr import ReadImageTool
 
         tool = ReadImageTool()
 
@@ -27,7 +27,7 @@ class TestReadImageTool:
 
     def test_tool_parameters(self):
         """Test tool parameters."""
-        from claude_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.ocr import ReadImageTool
 
         tool = ReadImageTool()
         params = tool.parameters
@@ -38,7 +38,7 @@ class TestReadImageTool:
 
     def test_tool_requires_permission(self):
         """Test that tool requires permission."""
-        from claude_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.ocr import ReadImageTool
 
         tool = ReadImageTool()
 
@@ -46,7 +46,7 @@ class TestReadImageTool:
 
     def test_tool_json_schema(self):
         """Test JSON schema generation."""
-        from claude_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.ocr import ReadImageTool
 
         tool = ReadImageTool()
         schema = tool.get_json_schema()
@@ -61,9 +61,9 @@ class TestReadImageToolExecution:
 
     def test_execute_success(self, tmp_path):
         """Test successful image recognition."""
-        from claude_code.core.tools.ocr import ReadImageTool
-        from claude_code.extensions.ocr.engine import OCREngine
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock
+        from deep_code.core.tools.ocr import ReadImageTool
+        from deep_code.extensions.ocr.engine import OCREngine
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock
 
         # Create a fake image file
         test_image = tmp_path / "test.png"
@@ -94,7 +94,7 @@ class TestReadImageToolExecution:
 
     def test_execute_file_not_found(self):
         """Test execution with non-existent file."""
-        from claude_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.ocr import ReadImageTool
 
         tool = ReadImageTool()
         result = tool.execute({"file_path": "/nonexistent/image.png"})
@@ -104,7 +104,7 @@ class TestReadImageToolExecution:
 
     def test_execute_unsupported_format(self, tmp_path):
         """Test execution with unsupported format."""
-        from claude_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.ocr import ReadImageTool
 
         # Create a text file
         test_file = tmp_path / "test.txt"
@@ -118,7 +118,7 @@ class TestReadImageToolExecution:
 
     def test_execute_missing_file_path(self):
         """Test execution with missing file_path parameter."""
-        from claude_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.ocr import ReadImageTool
 
         tool = ReadImageTool()
         result = tool.execute({})
@@ -128,7 +128,7 @@ class TestReadImageToolExecution:
 
     def test_execute_empty_file_path(self):
         """Test execution with empty file_path."""
-        from claude_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.ocr import ReadImageTool
 
         tool = ReadImageTool()
         result = tool.execute({"file_path": ""})
@@ -137,8 +137,8 @@ class TestReadImageToolExecution:
 
     def test_execute_with_output_format_text(self, tmp_path):
         """Test execution with text output format."""
-        from claude_code.core.tools.ocr import ReadImageTool
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock
+        from deep_code.core.tools.ocr import ReadImageTool
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock
 
         test_image = tmp_path / "test.png"
         test_image.write_bytes(b'\x89PNG\r\n\x1a\n')
@@ -166,8 +166,8 @@ class TestReadImageToolExecution:
 
     def test_execute_with_output_format_json(self, tmp_path):
         """Test execution with JSON output format."""
-        from claude_code.core.tools.ocr import ReadImageTool
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock
+        from deep_code.core.tools.ocr import ReadImageTool
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock
         import json
 
         test_image = tmp_path / "test.png"
@@ -198,8 +198,8 @@ class TestReadImageToolExecution:
 
     def test_execute_empty_ocr_result(self, tmp_path):
         """Test execution when OCR finds no text."""
-        from claude_code.core.tools.ocr import ReadImageTool
-        from claude_code.extensions.ocr.result import OCRResult
+        from deep_code.core.tools.ocr import ReadImageTool
+        from deep_code.extensions.ocr.result import OCRResult
 
         test_image = tmp_path / "test.png"
         test_image.write_bytes(b'\x89PNG\r\n\x1a\n')
@@ -225,9 +225,9 @@ class TestReadImageToolWithCache:
 
     def test_cache_hit(self, tmp_path):
         """Test that cached results are returned."""
-        from claude_code.core.tools.ocr import ReadImageTool
-        from claude_code.core.tools.performance import ToolCache
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock
+        from deep_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.performance import ToolCache
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock
 
         test_image = tmp_path / "test.png"
         test_image.write_bytes(b'\x89PNG\r\n\x1a\n')
@@ -264,8 +264,8 @@ class TestReadImageToolWithCache:
 
     def test_cache_disabled(self, tmp_path):
         """Test execution with cache disabled."""
-        from claude_code.core.tools.ocr import ReadImageTool
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock
+        from deep_code.core.tools.ocr import ReadImageTool
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock
 
         test_image = tmp_path / "test.png"
         test_image.write_bytes(b'\x89PNG\r\n\x1a\n')
@@ -302,8 +302,8 @@ class TestReadImageToolFormats:
     @pytest.mark.parametrize("ext", [".png", ".jpg", ".jpeg", ".bmp", ".tiff"])
     def test_supported_formats(self, tmp_path, ext):
         """Test that supported formats are accepted."""
-        from claude_code.core.tools.ocr import ReadImageTool
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock
+        from deep_code.core.tools.ocr import ReadImageTool
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock
 
         test_image = tmp_path / f"test{ext}"
         test_image.write_bytes(b'\x89PNG\r\n\x1a\n')  # Fake content
@@ -325,7 +325,7 @@ class TestReadImageToolFormats:
     @pytest.mark.parametrize("ext", [".txt", ".pdf", ".doc", ".html"])
     def test_unsupported_formats(self, tmp_path, ext):
         """Test that unsupported formats are rejected."""
-        from claude_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.ocr import ReadImageTool
 
         test_file = tmp_path / f"test{ext}"
         test_file.write_text("content")
@@ -341,8 +341,8 @@ class TestReadImageToolMetadata:
 
     def test_result_includes_metadata(self, tmp_path):
         """Test that result includes useful metadata."""
-        from claude_code.core.tools.ocr import ReadImageTool
-        from claude_code.extensions.ocr.result import OCRResult, TextBlock
+        from deep_code.core.tools.ocr import ReadImageTool
+        from deep_code.extensions.ocr.result import OCRResult, TextBlock
 
         test_image = tmp_path / "test.png"
         test_image.write_bytes(b'\x89PNG\r\n\x1a\n')
@@ -371,8 +371,8 @@ class TestReadImageToolIntegration:
 
     def test_tool_registration(self):
         """Test that tool can be registered in registry."""
-        from claude_code.core.tools.ocr import ReadImageTool
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         tool = ReadImageTool()
@@ -384,8 +384,8 @@ class TestReadImageToolIntegration:
 
     def test_tool_in_schema(self):
         """Test that tool appears in registry schema."""
-        from claude_code.core.tools.ocr import ReadImageTool
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.ocr import ReadImageTool
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         registry.register(ReadImageTool())

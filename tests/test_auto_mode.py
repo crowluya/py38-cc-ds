@@ -15,7 +15,7 @@ class _FakeAgent:
 
 
 def test_parse_auto_actions_accepts_fenced_json():
-    from claude_code.cli.main import _parse_auto_actions
+    from deep_code.cli.main import _parse_auto_actions
 
     out = "```json\n{\"actions\":[{\"type\":\"done\"}]}\n```"
     actions = _parse_auto_actions(out)
@@ -23,8 +23,8 @@ def test_parse_auto_actions_accepts_fenced_json():
 
 
 def test_auto_mode_executes_mkdir_and_write(tmp_path, monkeypatch):
-    from claude_code.cli import main as cli_main
-    from claude_code.security.permissions import PermissionManager, PermissionRule, PermissionAction, PermissionDomain
+    from deep_code.cli import main as cli_main
+    from deep_code.security.permissions import PermissionManager, PermissionRule, PermissionAction, PermissionDomain
 
     agent = _FakeAgent(
         [
@@ -59,8 +59,8 @@ def test_auto_mode_executes_mkdir_and_write(tmp_path, monkeypatch):
 
 
 def test_auto_mode_path_escape_is_denied(tmp_path):
-    from claude_code.cli.main import _process_input_auto
-    from claude_code.security.permissions import PermissionManager, PermissionRule, PermissionAction, PermissionDomain
+    from deep_code.cli.main import _process_input_auto
+    from deep_code.security.permissions import PermissionManager, PermissionRule, PermissionAction, PermissionDomain
 
     agent = _FakeAgent(
         [
@@ -92,8 +92,8 @@ def test_auto_mode_path_escape_is_denied(tmp_path):
 
 
 def test_auto_mode_run_requires_approval_when_not_auto_approve(tmp_path, monkeypatch):
-    from claude_code.cli import main as cli_main
-    from claude_code.security.permissions import PermissionManager, PermissionRule, PermissionAction, PermissionDomain
+    from deep_code.cli import main as cli_main
+    from deep_code.security.permissions import PermissionManager, PermissionRule, PermissionAction, PermissionDomain
 
     agent = _FakeAgent(
         [
@@ -130,8 +130,8 @@ def test_auto_mode_run_requires_approval_when_not_auto_approve(tmp_path, monkeyp
 
 
 def test_auto_collect_prompts_on_ask_and_allows(tmp_path):
-    from claude_code.cli import main as cli_main
-    from claude_code.security.permissions import PermissionManager, PermissionRule, PermissionAction, PermissionDomain
+    from deep_code.cli import main as cli_main
+    from deep_code.security.permissions import PermissionManager, PermissionRule, PermissionAction, PermissionDomain
 
     agent = _FakeAgent(
         [
@@ -175,8 +175,8 @@ def test_auto_collect_prompts_on_ask_and_allows(tmp_path):
 
 
 def test_auto_collect_prompts_on_ask_and_denies(tmp_path):
-    from claude_code.cli import main as cli_main
-    from claude_code.security.permissions import PermissionManager, PermissionRule, PermissionAction, PermissionDomain
+    from deep_code.cli import main as cli_main
+    from deep_code.security.permissions import PermissionManager, PermissionRule, PermissionAction, PermissionDomain
 
     agent = _FakeAgent(
         [

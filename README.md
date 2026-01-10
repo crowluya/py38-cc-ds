@@ -1,10 +1,10 @@
-# Claude Code Python MVP
+# DeepCode
 
 An AI-native development workflow engine written in Python 3.8.10, designed for Windows 7 internal network environments with DeepSeek R1 70B LLM integration.
 
 ## Overview
 
-Claude Code Python MVP implements core design patterns from Claude Code including:
+DeepCode implements core design patterns from Claude Code including:
 - **Spec-Driven Development (SDD)**: Complete workflow from requirements to implementation
 - **Context Management**: Solve context friction in AI collaboration with `@file` and `@dir` syntax
 - **Workflow Encapsulation**: Encode team best practices as reusable slash commands
@@ -109,7 +109,7 @@ Create `.pycc/settings.json` in your project directory:
 3. Project shared: `.pycc/settings.json`
 4. User global: `~/.pycc/settings.json`
 
-Note: `.claude/` in this repository is used by external tools (e.g., Claude Code IDE integrations) and is not read by this Python project.
+Note: `.deepcode/` in this repository is used by external tools (e.g., Claude Code IDE integrations) and is not read by this Python project.
 
 ## Usage
 
@@ -219,7 +219,7 @@ echo "@core/agent.py Explain this" | claude-code -p
 ## Project Structure
 
 ```
-claude_code/
+deep_code/
 ├── core/           # Agent engine, context, executor, SDD
 ├── interaction/    # Parser (@/!), commands, hooks
 ├── security/       # Permissions, sandbox, checkpoint
@@ -241,7 +241,7 @@ pytest
 pytest tests/test_agent.py
 
 # Run with coverage
-pytest --cov=claude_code
+pytest --cov=deep_code
 
 # Run with verbose output
 pytest -v
@@ -251,10 +251,10 @@ pytest -v
 
 ```bash
 # Type checking (if using mypy)
-mypy claude_code/
+mypy deep_code/
 
 # Format code (if using black)
-black claude_code/
+black deep_code/
 ```
 
 ## Windows 7 Compatibility Notes

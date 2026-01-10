@@ -10,7 +10,7 @@ import tempfile
 import pytest
 from pathlib import Path
 
-from claude_code.core.tools.bash import BashTool
+from deep_code.core.tools.bash import BashTool
 
 
 class TestBashTool:
@@ -327,7 +327,7 @@ class TestBashToolValidation:
     def test_missing_command(self):
         """Test that missing command raises error."""
         tool = BashTool()
-        from claude_code.core.tools.base import ToolValidationError
+        from deep_code.core.tools.base import ToolValidationError
 
         with pytest.raises(ToolValidationError):
             tool.execute({})

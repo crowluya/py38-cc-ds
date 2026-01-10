@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from claude_code.core.agent import (
+from deep_code.core.agent import (
     Agent,
     AgentConfig,
     ToolCall,

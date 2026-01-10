@@ -9,8 +9,8 @@ from typing import Any, Dict, List
 
 import pytest
 
-from claude_code.sdd.analyzer import CircularDependencyError, DependencyAnalyzer
-from claude_code.sdd.models import Dependency, Task
+from deep_code.sdd.analyzer import CircularDependencyError, DependencyAnalyzer
+from deep_code.sdd.models import Dependency, Task
 
 
 class TestTopologicalSort:

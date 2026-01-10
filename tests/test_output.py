@@ -9,7 +9,7 @@ from io import StringIO
 import pytest
 from rich.console import Console
 
-from claude_code.cli.output import Output, get_output, set_output
+from deep_code.cli.output import Output, get_output, set_output
 
 
 def test_output_create() -> None:

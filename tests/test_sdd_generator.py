@@ -9,9 +9,9 @@ from typing import Any, Dict, List
 
 import pytest
 
-from claude_code.llm.client import LLMClient
-from claude_code.sdd.generator import TaskGenerator
-from claude_code.sdd.models import Task
+from deep_code.llm.client import LLMClient
+from deep_code.sdd.generator import TaskGenerator
+from deep_code.sdd.models import Task
 
 
 class MockLLMClient(LLMClient):
@@ -146,8 +146,8 @@ class TestTaskGeneratorParsing:
         llm_output = """
 - [ ] **T001 Initialize project**
   - **依赖**: 无
-  - **产物**: claude_code/
-  - **验证**: python -c "import claude_code"
+  - **产物**: deep_code/
+  - **验证**: python -c "import deep_code"
   - **DoD**: Can import the package
 
 - [ ] **T002 Setup dependencies**
@@ -158,7 +158,7 @@ class TestTaskGeneratorParsing:
 - [ ] **T003 Create CLI [P]**
   - **依赖**: T001
   - **产物**: cli/main.py
-  - **验证**: python -m claude_code.cli.main --help
+  - **验证**: python -m deep_code.cli.main --help
 """
 
         tasks = TaskGenerator._parse_llm_output(llm_output)
@@ -222,7 +222,7 @@ class TestTaskGeneratorIntegration:
 
 ### 目录结构
 ```
-claude_code/
+deep_code/
 ├── core/
 ├── interaction/
 └── cli/
@@ -237,12 +237,12 @@ claude_code/
         llm_response = """
 - [ ] **T001 创建Task数据模型**
   - **依赖**: 无
-  - **产物**: claude_code/sdd/models.py
+  - **产物**: deep_code/sdd/models.py
   - **验证**: pytest tests/test_sdd_models.py
 
 - [ ] **T002 实现任务解析器**
   - **依赖**: T001
-  - **产物**: claude_code/sdd/parser.py
+  - **产物**: deep_code/sdd/parser.py
   - **验证**: pytest tests/test_sdd_parser.py
 """
 
@@ -268,7 +268,7 @@ class TestTaskGeneratorValidation:
         ]
 
         # Create proper dependency
-        from claude_code.sdd.models import Dependency
+        from deep_code.sdd.models import Dependency
 
         tasks = [
             Task(id="T001", description="Task 1"),
@@ -286,7 +286,7 @@ class TestTaskGeneratorValidation:
 
     def test_validate_missing_dependencies(self) -> None:
         """验证检测缺失依赖"""
-        from claude_code.sdd.models import Dependency
+        from deep_code.sdd.models import Dependency
 
         tasks = [
             Task(id="T001", description="Task 1", dependencies=[Dependency(task_id="T999")]),

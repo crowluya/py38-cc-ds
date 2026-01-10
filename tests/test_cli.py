@@ -11,26 +11,26 @@ from click.testing import CliRunner
 
 def test_cli_module_exists() -> None:
     """验证 CLI 模块存在"""
-    from claude_code.cli import main
+    from deep_code.cli import main
 
     assert main is not None
 
 
 def test_cli_help() -> None:
     """验证 CLI --help 工作"""
-    from claude_code.cli.main import cli
+    from deep_code.cli.main import cli
 
     runner = CliRunner()
     result = runner.invoke(cli, ["--help"])
 
     assert result.exit_code == 0
-    assert "Claude Code" in result.output
+    assert "DeepCode" in result.output
     assert "--help" in result.output
 
 
 def test_cli_version() -> None:
     """验证 CLI --version 工作"""
-    from claude_code.cli.main import cli
+    from deep_code.cli.main import cli
 
     runner = CliRunner()
     result = runner.invoke(cli, ["--version"])
@@ -41,7 +41,7 @@ def test_cli_version() -> None:
 
 def test_cli_chat_command() -> None:
     """验证 chat 子命令存在"""
-    from claude_code.cli.main import cli
+    from deep_code.cli.main import cli
 
     runner = CliRunner()
     result = runner.invoke(cli, ["chat", "--help"])
@@ -52,7 +52,7 @@ def test_cli_chat_command() -> None:
 
 def test_cli_print_command() -> None:
     """验证 print 子命令存在（headless 模式）"""
-    from claude_code.cli.main import cli
+    from deep_code.cli.main import cli
 
     runner = CliRunner()
     result = runner.invoke(cli, ["print", "--help"])

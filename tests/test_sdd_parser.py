@@ -9,8 +9,8 @@ from typing import List
 
 import pytest
 
-from claude_code.sdd.models import Dependency, Task
-from claude_code.sdd.parser import TaskParseError, parse_tasks_markdown
+from deep_code.sdd.models import Dependency, Task
+from deep_code.sdd.parser import TaskParseError, parse_tasks_markdown
 
 
 class TestTaskParserMinimal:
@@ -223,8 +223,8 @@ class TestTaskParserRealWorldExamples:
         markdown = (
             "- [ ] **T001 初始化项目目录结构（骨架）**\n"
             "  - **依赖**：无\n"
-            "  - **产物**：`claude_code/` 主包与子包目录、`tests/` 目录、必要的 `__init__.py`\n"
-            "  - **验证**：`python -c \"import claude_code\"`\n"
+            "  - **产物**：`deep_code/` 主包与子包目录、`tests/` 目录、必要的 `__init__.py`\n"
+            "  - **验证**：`python -c \"import deep_code\"`\n"
         )
 
         tasks = parse_tasks_markdown(markdown)

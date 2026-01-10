@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from claude_code.cli.main import cli
+from deep_code.cli.main import cli
 from click.testing import CliRunner
 
 
@@ -49,7 +49,7 @@ def test_headless_print_with_prompt():
     """Test -p flag with direct prompt."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Hello World")
 
         result = runner.invoke(cli, ["chat", "-p", "Say hello"])
@@ -62,7 +62,7 @@ def test_headless_print_long_flag():
     """Test --print long flag."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Test response")
 
         result = runner.invoke(cli, ["chat", "--print", "Test"])
@@ -75,7 +75,7 @@ def test_headless_print_with_model_override():
     """Test -p flag with model override."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_client = FakeLLMClient("Response")
         mock_factory.return_value = mock_client
 
@@ -92,7 +92,7 @@ def test_headless_read_from_stdin():
     """Test reading prompt from stdin."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Processed stdin input")
 
         result = runner.invoke(cli, ["chat", "-p"], input="This is from stdin")
@@ -105,7 +105,7 @@ def test_headless_stdin_priority_over_empty_prompt():
     """Test stdin is used when prompt arg is empty."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Stdin wins")
 
         result = runner.invoke(cli, ["chat", "-p", ""], input="Stdin content")
@@ -123,7 +123,7 @@ def test_headless_large_text_from_stdin():
 
     large_text = "Line " * 1000  # Large input
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_client = FakeLLMClient("Processed large text")
         mock_factory.return_value = mock_client
 
@@ -145,7 +145,7 @@ def test_headless_multiline_stdin():
 Second line
 Third line"""
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Got 3 lines")
 
         result = runner.invoke(cli, ["chat", "-p"], input=multiline_input)
@@ -160,7 +160,7 @@ def test_headless_special_characters_in_stdin():
 
     special_text = "Special: !@#$%^&*()[]{}"
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Handled special chars")
 
         result = runner.invoke(cli, ["chat", "-p"], input=special_text)
@@ -187,7 +187,7 @@ def test_headless_llm_error_handling():
     """Test error handling when LLM fails."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         # Simulate LLM error
         mock_client = Mock()
         mock_client.chat_completion.side_effect = Exception("LLM connection failed")
@@ -204,9 +204,9 @@ def test_headless_invalid_model():
     """Test error handling for invalid model configuration."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         # Simulate config error
-        from claude_code.llm.client import LLMConfigError
+        from deep_code.llm.client import LLMConfigError
         mock_factory.side_effect = LLMConfigError("Invalid model configuration")
 
         result = runner.invoke(cli, ["chat", "-p", "Test"])
@@ -221,7 +221,7 @@ def test_headless_exits_after_response():
     """Test headless mode exits after printing response (no interactive loop)."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Single response")
 
         result = runner.invoke(cli, ["chat", "-p", "Test"])
@@ -235,7 +235,7 @@ def test_headless_no_persistent_history():
     """Test headless mode doesn't persist conversation history."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_client = FakeLLMClient("Response 1")
         mock_factory.return_value = mock_client
 
@@ -256,7 +256,7 @@ def test_headless_output_clean():
     """Test headless output is clean (no extra debug info)."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_factory.return_value = FakeLLMClient("Clean output")
 
         result = runner.invoke(cli, ["chat", "-p", "Test"])
@@ -275,7 +275,7 @@ def test_headless_with_context_injection_simulation():
     """Test headless mode can handle prompts with @ syntax (simulation)."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_client = FakeLLMClient("Processed with context")
         mock_factory.return_value = mock_client
 
@@ -294,7 +294,7 @@ def test_headless_with_command_syntax_simulation():
     """Test headless mode can handle ! command syntax (simulation)."""
     runner = CliRunner()
 
-    with patch("claude_code.cli.main.create_llm_client") as mock_factory:
+    with patch("deep_code.cli.main.create_llm_client") as mock_factory:
         mock_client = FakeLLMClient("Executed command")
         mock_factory.return_value = mock_client
 

@@ -24,7 +24,7 @@ print(f"  DEEPSEEK_BASE_URL: {os.environ.get('DEEPSEEK_BASE_URL', '(not set)')}"
 print(f"  DEEPSEEK_MODEL: {os.environ.get('DEEPSEEK_MODEL', '(not set)')}")
 print()
 
-from claude_code.config.loader import load_settings
+from deep_code.config.loader import load_settings
 
 settings = load_settings()
 print("加载的配置:")

@@ -10,7 +10,7 @@ import time
 import pytest
 from pathlib import Path
 
-from claude_code.core.tools.glob import GlobTool
+from deep_code.core.tools.glob import GlobTool
 
 
 class TestGlobTool:
@@ -272,7 +272,7 @@ class TestGlobToolValidation:
     def test_missing_pattern(self):
         """Test that missing pattern raises error."""
         tool = GlobTool()
-        from claude_code.core.tools.base import ToolValidationError
+        from deep_code.core.tools.base import ToolValidationError
 
         with pytest.raises(ToolValidationError):
             tool.execute({})

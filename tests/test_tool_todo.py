@@ -7,7 +7,7 @@ Python 3.8.10 compatible
 import pytest
 from typing import Any, Dict, List
 
-from claude_code.core.tools.base import ToolCategory, ToolResult
+from deep_code.core.tools.base import ToolCategory, ToolResult
 
 
 class TestTodoWriteTool:
@@ -15,7 +15,7 @@ class TestTodoWriteTool:
 
     def test_properties(self):
         """Test tool properties."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
         assert tool.name == "TodoWrite"
@@ -27,7 +27,7 @@ class TestTodoWriteTool:
 
     def test_json_schema(self):
         """Test JSON schema generation."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
         schema = tool.get_json_schema()
@@ -38,7 +38,7 @@ class TestTodoWriteTool:
 
     def test_add_single_todo(self):
         """Test adding a single todo item."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
         result = tool.execute({
@@ -59,7 +59,7 @@ class TestTodoWriteTool:
 
     def test_add_multiple_todos(self):
         """Test adding multiple todo items."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
         result = tool.execute({
@@ -76,7 +76,7 @@ class TestTodoWriteTool:
 
     def test_update_todo_status(self):
         """Test updating todo status."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
 
@@ -101,7 +101,7 @@ class TestTodoWriteTool:
 
     def test_replace_all_todos(self):
         """Test that execute replaces all todos."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
 
@@ -127,7 +127,7 @@ class TestTodoWriteTool:
 
     def test_clear_todos(self):
         """Test clearing all todos."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
 
@@ -147,7 +147,7 @@ class TestTodoWriteTool:
 
     def test_invalid_status(self):
         """Test that invalid status is rejected."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
         result = tool.execute({
@@ -161,7 +161,7 @@ class TestTodoWriteTool:
 
     def test_missing_required_fields(self):
         """Test that missing required fields are rejected."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
 
@@ -191,7 +191,7 @@ class TestTodoWriteTool:
 
     def test_get_pending_todos(self):
         """Test getting pending todos."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
         tool.execute({
@@ -208,7 +208,7 @@ class TestTodoWriteTool:
 
     def test_get_in_progress_todos(self):
         """Test getting in_progress todos."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
         tool.execute({
@@ -225,7 +225,7 @@ class TestTodoWriteTool:
 
     def test_get_completed_todos(self):
         """Test getting completed todos."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
         tool.execute({
@@ -246,7 +246,7 @@ class TestTodoWriteToolFormatting:
 
     def test_format_todos_for_display(self):
         """Test formatting todos for display."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
         tool.execute({
@@ -267,7 +267,7 @@ class TestTodoWriteToolFormatting:
 
     def test_format_empty_todos(self):
         """Test formatting empty todo list."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
         formatted = tool.format_todos()
@@ -279,7 +279,7 @@ class TestTodoWriteToolPersistence:
 
     def test_todos_persist_across_calls(self):
         """Test that todos persist across multiple execute calls."""
-        from claude_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.todo import TodoWriteTool
 
         tool = TodoWriteTool()
 
@@ -304,7 +304,7 @@ class TestTodoWriteToolPersistence:
 
     def test_shared_state_between_instances(self):
         """Test that state can be shared between instances via session."""
-        from claude_code.core.tools.todo import TodoWriteTool, TodoSession
+        from deep_code.core.tools.todo import TodoWriteTool, TodoSession
 
         session = TodoSession()
         tool1 = TodoWriteTool(session=session)
@@ -328,8 +328,8 @@ class TestTodoWriteToolIntegration:
 
     def test_register_with_registry(self):
         """Test registering TodoWriteTool with registry."""
-        from claude_code.core.tools.todo import TodoWriteTool
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         tool = TodoWriteTool()
@@ -341,10 +341,10 @@ class TestTodoWriteToolIntegration:
 
     def test_execute_via_executor(self):
         """Test executing TodoWriteTool via ToolExecutor."""
-        from claude_code.core.tools.todo import TodoWriteTool
-        from claude_code.core.tools.base import ToolCall
-        from claude_code.core.tools.registry import ToolRegistry
-        from claude_code.core.tool_executor import ToolExecutor
+        from deep_code.core.tools.todo import TodoWriteTool
+        from deep_code.core.tools.base import ToolCall
+        from deep_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tool_executor import ToolExecutor
 
         registry = ToolRegistry()
         tool = TodoWriteTool()

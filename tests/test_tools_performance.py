@@ -10,7 +10,7 @@ import threading
 from typing import Any, Dict, List, Optional
 from unittest.mock import Mock, MagicMock, patch
 
-from claude_code.core.tools.base import Tool, ToolCategory, ToolResult, ToolParameter
+from deep_code.core.tools.base import Tool, ToolCategory, ToolResult, ToolParameter
 
 
 # Test fixtures
@@ -85,28 +85,28 @@ class TestToolCache:
 
     def test_cache_initialization(self):
         """Test cache initialization."""
-        from claude_code.core.tools.performance import ToolCache
+        from deep_code.core.tools.performance import ToolCache
 
         cache = ToolCache()
         assert cache.size == 0
 
     def test_cache_with_max_size(self):
         """Test cache with max size."""
-        from claude_code.core.tools.performance import ToolCache
+        from deep_code.core.tools.performance import ToolCache
 
         cache = ToolCache(max_size=100)
         assert cache.max_size == 100
 
     def test_cache_with_ttl(self):
         """Test cache with TTL."""
-        from claude_code.core.tools.performance import ToolCache
+        from deep_code.core.tools.performance import ToolCache
 
         cache = ToolCache(ttl_seconds=60)
         assert cache.ttl_seconds == 60
 
     def test_cache_set_and_get(self):
         """Test setting and getting cache entries."""
-        from claude_code.core.tools.performance import ToolCache
+        from deep_code.core.tools.performance import ToolCache
 
         cache = ToolCache()
         result = ToolResult.success_result("Test", "output")
@@ -119,7 +119,7 @@ class TestToolCache:
 
     def test_cache_miss(self):
         """Test cache miss."""
-        from claude_code.core.tools.performance import ToolCache
+        from deep_code.core.tools.performance import ToolCache
 
         cache = ToolCache()
         cached = cache.get("nonexistent")
@@ -128,7 +128,7 @@ class TestToolCache:
 
     def test_cache_expiration(self):
         """Test cache entry expiration."""
-        from claude_code.core.tools.performance import ToolCache
+        from deep_code.core.tools.performance import ToolCache
 
         cache = ToolCache(ttl_seconds=0.1)
         result = ToolResult.success_result("Test", "output")
@@ -141,7 +141,7 @@ class TestToolCache:
 
     def test_cache_eviction_lru(self):
         """Test LRU eviction when cache is full."""
-        from claude_code.core.tools.performance import ToolCache
+        from deep_code.core.tools.performance import ToolCache
 
         cache = ToolCache(max_size=2)
 
@@ -156,7 +156,7 @@ class TestToolCache:
 
     def test_cache_clear(self):
         """Test clearing cache."""
-        from claude_code.core.tools.performance import ToolCache
+        from deep_code.core.tools.performance import ToolCache
 
         cache = ToolCache()
         cache.set("key1", ToolResult.success_result("Test", "1"))
@@ -169,7 +169,7 @@ class TestToolCache:
 
     def test_cache_key_generation(self):
         """Test cache key generation."""
-        from claude_code.core.tools.performance import generate_cache_key
+        from deep_code.core.tools.performance import generate_cache_key
 
         key1 = generate_cache_key("Read", {"file_path": "/tmp/test.txt"})
         key2 = generate_cache_key("Read", {"file_path": "/tmp/test.txt"})
@@ -180,7 +180,7 @@ class TestToolCache:
 
     def test_cache_key_order_independent(self):
         """Test that cache key is independent of argument order."""
-        from claude_code.core.tools.performance import generate_cache_key
+        from deep_code.core.tools.performance import generate_cache_key
 
         key1 = generate_cache_key("Tool", {"a": 1, "b": 2})
         key2 = generate_cache_key("Tool", {"b": 2, "a": 1})
@@ -193,8 +193,8 @@ class TestCachedExecutor:
 
     def test_cached_executor_initialization(self):
         """Test cached executor initialization."""
-        from claude_code.core.tools.performance import CachedToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import CachedToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         executor = CachedToolExecutor(registry)
@@ -203,8 +203,8 @@ class TestCachedExecutor:
 
     def test_cached_executor_caches_results(self):
         """Test that executor caches results."""
-        from claude_code.core.tools.performance import CachedToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import CachedToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         tool = CacheableTool()
@@ -223,8 +223,8 @@ class TestCachedExecutor:
 
     def test_cached_executor_different_args_not_cached(self):
         """Test that different arguments are not cached together."""
-        from claude_code.core.tools.performance import CachedToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import CachedToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         tool = CacheableTool()
@@ -239,8 +239,8 @@ class TestCachedExecutor:
 
     def test_cached_executor_cache_disabled(self):
         """Test executor with cache disabled."""
-        from claude_code.core.tools.performance import CachedToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import CachedToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         tool = CacheableTool()
@@ -255,8 +255,8 @@ class TestCachedExecutor:
 
     def test_cached_executor_skip_cache_for_tool(self):
         """Test skipping cache for specific tools."""
-        from claude_code.core.tools.performance import CachedToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import CachedToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         tool = CacheableTool()
@@ -279,8 +279,8 @@ class TestParallelExecution:
 
     def test_parallel_executor_initialization(self):
         """Test parallel executor initialization."""
-        from claude_code.core.tools.performance import ParallelToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import ParallelToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         executor = ParallelToolExecutor(registry)
@@ -289,8 +289,8 @@ class TestParallelExecution:
 
     def test_parallel_executor_with_max_workers(self):
         """Test parallel executor with custom max workers."""
-        from claude_code.core.tools.performance import ParallelToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import ParallelToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         executor = ParallelToolExecutor(registry, max_workers=4)
@@ -299,8 +299,8 @@ class TestParallelExecution:
 
     def test_execute_parallel_single_tool(self):
         """Test parallel execution with single tool."""
-        from claude_code.core.tools.performance import ParallelToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import ParallelToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         registry.register(SlowTool(delay=0.05))
@@ -315,8 +315,8 @@ class TestParallelExecution:
 
     def test_execute_parallel_multiple_tools(self):
         """Test parallel execution with multiple tools."""
-        from claude_code.core.tools.performance import ParallelToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import ParallelToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         registry.register(SlowTool(delay=0.1))
@@ -338,8 +338,8 @@ class TestParallelExecution:
 
     def test_execute_parallel_preserves_order(self):
         """Test that parallel execution preserves result order."""
-        from claude_code.core.tools.performance import ParallelToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import ParallelToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         tool = CacheableTool()
@@ -358,8 +358,8 @@ class TestParallelExecution:
 
     def test_execute_parallel_handles_errors(self):
         """Test that parallel execution handles errors gracefully."""
-        from claude_code.core.tools.performance import ParallelToolExecutor
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.performance import ParallelToolExecutor
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         registry.register(CacheableTool())
@@ -382,21 +382,21 @@ class TestChunkedFileReader:
 
     def test_chunked_reader_initialization(self):
         """Test chunked reader initialization."""
-        from claude_code.core.tools.performance import ChunkedFileReader
+        from deep_code.core.tools.performance import ChunkedFileReader
 
         reader = ChunkedFileReader(chunk_size=1024)
         assert reader.chunk_size == 1024
 
     def test_chunked_reader_default_chunk_size(self):
         """Test default chunk size."""
-        from claude_code.core.tools.performance import ChunkedFileReader
+        from deep_code.core.tools.performance import ChunkedFileReader
 
         reader = ChunkedFileReader()
         assert reader.chunk_size > 0
 
     def test_read_small_file(self, tmp_path):
         """Test reading a small file (no chunking needed)."""
-        from claude_code.core.tools.performance import ChunkedFileReader
+        from deep_code.core.tools.performance import ChunkedFileReader
 
         test_file = tmp_path / "small.txt"
         test_file.write_text("Hello, World!", encoding="utf-8")
@@ -408,7 +408,7 @@ class TestChunkedFileReader:
 
     def test_read_large_file_chunked(self, tmp_path):
         """Test reading a large file in chunks."""
-        from claude_code.core.tools.performance import ChunkedFileReader
+        from deep_code.core.tools.performance import ChunkedFileReader
 
         test_file = tmp_path / "large.txt"
         large_content = "x" * 10000
@@ -421,7 +421,7 @@ class TestChunkedFileReader:
 
     def test_read_file_with_offset(self, tmp_path):
         """Test reading file with offset."""
-        from claude_code.core.tools.performance import ChunkedFileReader
+        from deep_code.core.tools.performance import ChunkedFileReader
 
         test_file = tmp_path / "test.txt"
         test_file.write_text("0123456789", encoding="utf-8")
@@ -433,7 +433,7 @@ class TestChunkedFileReader:
 
     def test_read_file_with_limit(self, tmp_path):
         """Test reading file with limit."""
-        from claude_code.core.tools.performance import ChunkedFileReader
+        from deep_code.core.tools.performance import ChunkedFileReader
 
         test_file = tmp_path / "test.txt"
         test_file.write_text("0123456789", encoding="utf-8")
@@ -445,7 +445,7 @@ class TestChunkedFileReader:
 
     def test_read_file_with_offset_and_limit(self, tmp_path):
         """Test reading file with both offset and limit."""
-        from claude_code.core.tools.performance import ChunkedFileReader
+        from deep_code.core.tools.performance import ChunkedFileReader
 
         test_file = tmp_path / "test.txt"
         test_file.write_text("0123456789", encoding="utf-8")
@@ -457,7 +457,7 @@ class TestChunkedFileReader:
 
     def test_read_file_iterator(self, tmp_path):
         """Test reading file as iterator."""
-        from claude_code.core.tools.performance import ChunkedFileReader
+        from deep_code.core.tools.performance import ChunkedFileReader
 
         test_file = tmp_path / "test.txt"
         test_file.write_text("0123456789", encoding="utf-8")
@@ -470,7 +470,7 @@ class TestChunkedFileReader:
 
     def test_read_nonexistent_file(self):
         """Test reading non-existent file."""
-        from claude_code.core.tools.performance import ChunkedFileReader
+        from deep_code.core.tools.performance import ChunkedFileReader
 
         reader = ChunkedFileReader()
 
@@ -483,14 +483,14 @@ class TestPerformanceMetrics:
 
     def test_metrics_initialization(self):
         """Test metrics initialization."""
-        from claude_code.core.tools.performance import PerformanceMetrics
+        from deep_code.core.tools.performance import PerformanceMetrics
 
         metrics = PerformanceMetrics()
         assert metrics.total_executions == 0
 
     def test_record_execution(self):
         """Test recording execution metrics."""
-        from claude_code.core.tools.performance import PerformanceMetrics
+        from deep_code.core.tools.performance import PerformanceMetrics
 
         metrics = PerformanceMetrics()
         metrics.record_execution("TestTool", 0.1, success=True)
@@ -500,7 +500,7 @@ class TestPerformanceMetrics:
 
     def test_record_multiple_executions(self):
         """Test recording multiple executions."""
-        from claude_code.core.tools.performance import PerformanceMetrics
+        from deep_code.core.tools.performance import PerformanceMetrics
 
         metrics = PerformanceMetrics()
         metrics.record_execution("Tool1", 0.1, success=True)
@@ -513,7 +513,7 @@ class TestPerformanceMetrics:
 
     def test_get_average_duration(self):
         """Test getting average duration."""
-        from claude_code.core.tools.performance import PerformanceMetrics
+        from deep_code.core.tools.performance import PerformanceMetrics
 
         metrics = PerformanceMetrics()
         metrics.record_execution("Tool", 0.1, success=True)
@@ -525,7 +525,7 @@ class TestPerformanceMetrics:
 
     def test_cache_hit_rate(self):
         """Test cache hit rate calculation."""
-        from claude_code.core.tools.performance import PerformanceMetrics
+        from deep_code.core.tools.performance import PerformanceMetrics
 
         metrics = PerformanceMetrics()
         metrics.record_cache_hit("Tool")
@@ -536,7 +536,7 @@ class TestPerformanceMetrics:
 
     def test_get_summary(self):
         """Test getting metrics summary."""
-        from claude_code.core.tools.performance import PerformanceMetrics
+        from deep_code.core.tools.performance import PerformanceMetrics
 
         metrics = PerformanceMetrics()
         metrics.record_execution("Tool1", 0.1, success=True)
@@ -553,11 +553,11 @@ class TestPerformanceIntegration:
 
     def test_full_performance_workflow(self):
         """Test full performance optimization workflow."""
-        from claude_code.core.tools.performance import (
+        from deep_code.core.tools.performance import (
             CachedToolExecutor,
             PerformanceMetrics,
         )
-        from claude_code.core.tools.registry import ToolRegistry
+        from deep_code.core.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
         tool = CacheableTool()

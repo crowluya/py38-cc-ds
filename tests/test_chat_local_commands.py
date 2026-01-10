@@ -10,7 +10,7 @@ class _FakeAgent:
 
 
 def test_local_mkdir_and_read_dir(tmp_path, capsys):
-    from claude_code.cli.main import _handle_local_command
+    from deep_code.cli.main import _handle_local_command
 
     agent = _FakeAgent("")
     root = str(tmp_path)
@@ -27,7 +27,7 @@ def test_local_mkdir_and_read_dir(tmp_path, capsys):
 
 
 def test_local_read_file(tmp_path, capsys):
-    from claude_code.cli.main import _handle_local_command
+    from deep_code.cli.main import _handle_local_command
 
     agent = _FakeAgent("")
     (tmp_path / "t.txt").write_text("hello\n", encoding="utf-8")
@@ -38,7 +38,7 @@ def test_local_read_file(tmp_path, capsys):
 
 
 def test_local_gen_file_python(tmp_path):
-    from claude_code.cli.main import _handle_local_command
+    from deep_code.cli.main import _handle_local_command
 
     agent = _FakeAgent("def add(a, b):\n    return a + b\n")
     root = str(tmp_path)
@@ -56,7 +56,7 @@ def test_local_gen_file_python(tmp_path):
 
 
 def test_local_path_escape_denied(tmp_path, capsys):
-    from claude_code.cli.main import _handle_local_command
+    from deep_code.cli.main import _handle_local_command
 
     agent = _FakeAgent("")
 

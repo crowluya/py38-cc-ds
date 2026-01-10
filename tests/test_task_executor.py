@@ -21,7 +21,7 @@ from enum import Enum
 import time
 
 
-# These will be imported from claude_code.core.sdd
+# These will be imported from deep_code.core.sdd
 # For now, we define them minimally for tests
 
 
@@ -77,7 +77,7 @@ class MockAgent:
 
 
 # We'll import these after implementation
-# from claude_code.core.sdd import (
+# from deep_code.core.sdd import (
 #     Task,
 #     TaskStatus,
 #     TaskResult,
@@ -98,7 +98,7 @@ class MockAgent:
 
 def test_task_creation_minimal():
     """Test creating a task with minimal fields."""
-    from claude_code.core.sdd import Task, TaskStatus
+    from deep_code.core.sdd import Task, TaskStatus
 
     task = Task(
         id="T001",
@@ -118,7 +118,7 @@ def test_task_creation_minimal():
 
 def test_task_creation_full():
     """Test creating a task with all fields."""
-    from claude_code.core.sdd import Task, TaskStatus
+    from deep_code.core.sdd import Task, TaskStatus
 
     task = Task(
         id="T002",
@@ -127,7 +127,7 @@ def test_task_creation_full():
         dependencies=["T001"],
         parallel=True,
         tdd=True,
-        file="claude_code/core/sdd.py",
+        file="deep_code/core/sdd.py",
         function="execute_tasks",
     )
 
@@ -137,13 +137,13 @@ def test_task_creation_full():
     assert task.dependencies == ["T001"]
     assert task.parallel is True
     assert task.tdd is True
-    assert task.file == "claude_code/core/sdd.py"
+    assert task.file == "deep_code/core/sdd.py"
     assert task.function == "execute_tasks"
 
 
 def test_task_status_enum():
     """Test TaskStatus enum values."""
-    from claude_code.core.sdd import TaskStatus
+    from deep_code.core.sdd import TaskStatus
 
     assert TaskStatus.PENDING.value == "pending"
     assert TaskStatus.IN_PROGRESS.value == "in_progress"
@@ -153,7 +153,7 @@ def test_task_status_enum():
 
 def test_task_status_transitions():
     """Test task status transitions."""
-    from claude_code.core.sdd import Task, TaskStatus
+    from deep_code.core.sdd import Task, TaskStatus
 
     task = Task(id="T001", description="Test task")
 
@@ -175,7 +175,7 @@ def test_task_status_transitions():
 
 def test_task_result_creation():
     """Test creating task results."""
-    from claude_code.core.sdd import TaskResult
+    from deep_code.core.sdd import TaskResult
 
     result = TaskResult(
         task_id="T001",
@@ -193,7 +193,7 @@ def test_task_result_creation():
 
 def test_task_result_failure():
     """Test creating failed task results."""
-    from claude_code.core.sdd import TaskResult
+    from deep_code.core.sdd import TaskResult
 
     result = TaskResult(
         task_id="T002",
@@ -215,7 +215,7 @@ def test_task_result_failure():
 
 def test_parse_single_task():
     """Test parsing a single task from markdown."""
-    from claude_code.core.sdd import parse_tasks_from_markdown
+    from deep_code.core.sdd import parse_tasks_from_markdown
 
     markdown = """
 - [ ] **T001 Implement feature X**
@@ -232,7 +232,7 @@ def test_parse_single_task():
 
 def test_parse_multiple_tasks():
     """Test parsing multiple tasks from markdown."""
-    from claude_code.core.sdd import parse_tasks_from_markdown
+    from deep_code.core.sdd import parse_tasks_from_markdown
 
     markdown = """
 - [ ] **T001 Task one**
@@ -255,7 +255,7 @@ def test_parse_multiple_tasks():
 
 def test_parse_task_with_dependencies():
     """Test parsing tasks with dependencies."""
-    from claude_code.core.sdd import parse_tasks_from_markdown
+    from deep_code.core.sdd import parse_tasks_from_markdown
 
     markdown = """
 - [ ] **T001 First task**
@@ -278,7 +278,7 @@ def test_parse_task_with_dependencies():
 
 def test_parse_parallel_marked_tasks():
     """Test parsing tasks marked as parallel [P]."""
-    from claude_code.core.sdd import parse_tasks_from_markdown
+    from deep_code.core.sdd import parse_tasks_from_markdown
 
     markdown = """
 - [ ] **T001 Sequential task**
@@ -304,7 +304,7 @@ def test_parse_parallel_marked_tasks():
 
 def test_analyze_dependencies_linear():
     """Test dependency analysis for linear chain."""
-    from claude_code.core.sdd import Task, analyze_dependencies
+    from deep_code.core.sdd import Task, analyze_dependencies
 
     tasks = [
         Task(id="T001", description="First"),
@@ -324,7 +324,7 @@ def test_analyze_dependencies_linear():
 
 def test_analyze_dependencies_diamond():
     """Test dependency analysis for diamond pattern."""
-    from claude_code.core.sdd import Task, analyze_dependencies
+    from deep_code.core.sdd import Task, analyze_dependencies
 
     tasks = [
         Task(id="T001", description="Root"),
@@ -343,7 +343,7 @@ def test_analyze_dependencies_diamond():
 
 def test_topological_sort_linear():
     """Test topological sort for linear dependencies."""
-    from claude_code.core.sdd import Task, topological_sort
+    from deep_code.core.sdd import Task, topological_sort
 
     tasks = [
         Task(id="T001", description="First"),
@@ -361,7 +361,7 @@ def test_topological_sort_linear():
 
 def test_topological_sort_complex():
     """Test topological sort for complex dependency graph."""
-    from claude_code.core.sdd import Task, topological_sort
+    from deep_code.core.sdd import Task, topological_sort
 
     tasks = [
         Task(id="T001", description="Root"),
@@ -387,7 +387,7 @@ def test_topological_sort_complex():
 
 def test_topological_sort_circular_dependency():
     """Test that circular dependencies are detected."""
-    from claude_code.core.sdd import Task, topological_sort, CircularDependencyError
+    from deep_code.core.sdd import Task, topological_sort, CircularDependencyError
 
     tasks = [
         Task(id="T001", description="First", dependencies=["T002"]),
@@ -402,7 +402,7 @@ def test_topological_sort_circular_dependency():
 
 def test_topological_sort_self_dependency():
     """Test that self-dependencies are detected."""
-    from claude_code.core.sdd import Task, topological_sort, CircularDependencyError
+    from deep_code.core.sdd import Task, topological_sort, CircularDependencyError
 
     tasks = [
         Task(id="T001", description="First", dependencies=["T001"]),
@@ -419,7 +419,7 @@ def test_topological_sort_self_dependency():
 
 def test_group_parallel_tasks_none():
     """Test grouping when no tasks are parallel."""
-    from claude_code.core.sdd import Task, group_parallel_tasks
+    from deep_code.core.sdd import Task, group_parallel_tasks
 
     tasks = [
         Task(id="T001", description="First", parallel=False),
@@ -434,7 +434,7 @@ def test_group_parallel_tasks_none():
 
 def test_group_parallel_tasks_simple():
     """Test grouping independent parallel tasks."""
-    from claude_code.core.sdd import Task, group_parallel_tasks
+    from deep_code.core.sdd import Task, group_parallel_tasks
 
     tasks = [
         Task(id="T001", description="Root"),
@@ -455,7 +455,7 @@ def test_group_parallel_tasks_simple():
 
 def test_group_parallel_tasks_mixed():
     """Test grouping mixed parallel and sequential tasks."""
-    from claude_code.core.sdd import Task, group_parallel_tasks
+    from deep_code.core.sdd import Task, group_parallel_tasks
 
     tasks = [
         Task(id="T001", description="Root"),
@@ -478,7 +478,7 @@ def test_group_parallel_tasks_mixed():
 
 def test_execute_task_mock_agent():
     """Test executing a task with mock agent."""
-    from claude_code.core.sdd import Task, execute_task
+    from deep_code.core.sdd import Task, execute_task
 
     agent = MockAgent(responses=["Implementation complete"])
     task = Task(
@@ -496,7 +496,7 @@ def test_execute_task_mock_agent():
 
 def test_execute_task_with_tdd():
     """Test executing a task with TDD flag."""
-    from claude_code.core.sdd import Task, execute_task
+    from deep_code.core.sdd import Task, execute_task
 
     agent = MockAgent(responses=["Test written", "Implementation complete"])
     task = Task(
@@ -516,7 +516,7 @@ def test_execute_task_with_tdd():
 
 def test_execute_task_multiple_calls():
     """Test that task execution prompts agent appropriately."""
-    from claude_code.core.sdd import Task, execute_task
+    from deep_code.core.sdd import Task, execute_task
 
     agent = MockAgent(responses=["Step 1", "Step 2", "Step 3"])
     task = Task(
@@ -537,7 +537,7 @@ def test_execute_task_multiple_calls():
 
 def test_executor_initialization():
     """Test TaskExecutor initialization."""
-    from claude_code.core.sdd import TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import TaskExecutor, TaskExecutorConfig
 
     agent = MockAgent()
     config = TaskExecutorConfig(agent=agent, max_parallel_tasks=2)
@@ -554,7 +554,7 @@ def test_executor_initialization():
 
 def test_executor_sequential_execution():
     """Test sequential execution of tasks."""
-    from claude_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
 
     agent = MockAgent(responses=["Done 1", "Done 2", "Done 3"])
     config = TaskExecutorConfig(agent=agent)
@@ -580,7 +580,7 @@ def test_executor_sequential_execution():
 
 def test_executor_with_independent_tasks():
     """Test executor with independent tasks (no dependencies)."""
-    from claude_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
 
     agent = MockAgent(responses=["A", "B", "C"])
     config = TaskExecutorConfig(agent=agent)
@@ -600,7 +600,7 @@ def test_executor_with_independent_tasks():
 
 def test_executor_parallel_marked_tasks():
     """Test executor respects [P] marking for parallel tasks."""
-    from claude_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
 
     agent = MockAgent(responses=["A", "B", "C"])
     config = TaskExecutorConfig(agent=agent, max_parallel_tasks=2)
@@ -620,7 +620,7 @@ def test_executor_parallel_marked_tasks():
 
 def test_executor_status_tracking():
     """Test that executor tracks task status correctly."""
-    from claude_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
 
     agent = MockAgent(responses=["Done"])
     config = TaskExecutorConfig(agent=agent)
@@ -650,7 +650,7 @@ def test_executor_status_tracking():
 
 def test_executor_empty_task_list():
     """Test executor with empty task list."""
-    from claude_code.core.sdd import TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import TaskExecutor, TaskExecutorConfig
 
     agent = MockAgent()
     config = TaskExecutorConfig(agent=agent)
@@ -663,7 +663,7 @@ def test_executor_empty_task_list():
 
 def test_executor_task_failure():
     """Test executor handles task failures gracefully."""
-    from claude_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
 
     class FailingAgent(MockAgent):
         def process(self, user_input: str) -> Any:
@@ -686,7 +686,7 @@ def test_executor_task_failure():
 
 def test_executor_diamond_dependencies():
     """Test executor with diamond dependency pattern."""
-    from claude_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
 
     agent = MockAgent(responses=["A", "B", "C", "D"])
     config = TaskExecutorConfig(agent=agent)
@@ -710,7 +710,7 @@ def test_executor_diamond_dependencies():
 
 def test_full_workflow_sequential():
     """Test full workflow: parse → analyze → execute sequential."""
-    from claude_code.core.sdd import (
+    from deep_code.core.sdd import (
         parse_tasks_from_markdown,
         topological_sort,
         TaskExecutor,
@@ -752,7 +752,7 @@ def test_full_workflow_sequential():
 
 def test_full_workflow_with_parallel():
     """Test full workflow with parallel tasks."""
-    from claude_code.core.sdd import (
+    from deep_code.core.sdd import (
         parse_tasks_from_markdown,
         TaskExecutor,
         TaskExecutorConfig,
@@ -796,7 +796,7 @@ def test_full_workflow_with_parallel():
 
 def test_missing_dependency():
     """Test executor with missing dependency."""
-    from claude_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
 
     agent = MockAgent(responses=["Done"])
     config = TaskExecutorConfig(agent=agent)
@@ -814,7 +814,7 @@ def test_missing_dependency():
 
 def test_executor_invalid_task_id():
     """Test executor handles various task ID formats."""
-    from claude_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
 
     agent = MockAgent(responses=["Done"])
     config = TaskExecutorConfig(agent=agent)
@@ -837,7 +837,7 @@ def test_executor_invalid_task_id():
 
 def test_executor_many_tasks():
     """Test executor handles many tasks efficiently."""
-    from claude_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
+    from deep_code.core.sdd import Task, TaskExecutor, TaskExecutorConfig
 
     responses = [f"Task {i} done" for i in range(20)]
     agent = MockAgent(responses=responses)

@@ -8,22 +8,22 @@ import pytest
 from typing import Any, Dict, List, Optional
 from unittest.mock import Mock, MagicMock, patch
 
-from claude_code.core.agent import (
+from deep_code.core.agent import (
     Agent,
     AgentConfig,
     ConversationTurn,
     Message,
     MessageRole,
 )
-from claude_code.core.tools.base import (
+from deep_code.core.tools.base import (
     Tool,
     ToolCall,
     ToolResult,
     ToolCategory,
     ToolParameter,
 )
-from claude_code.core.tools.registry import ToolRegistry
-from claude_code.core.tool_executor import ToolExecutor
+from deep_code.core.tools.registry import ToolRegistry
+from deep_code.core.tool_executor import ToolExecutor
 
 
 class MockTool(Tool):
@@ -408,7 +408,7 @@ class TestAgentToolLoopIntegration:
     def test_agent_with_read_tool(self):
         """Test agent with actual Read tool."""
         import tempfile
-        from claude_code.core.tools.read import ReadTool
+        from deep_code.core.tools.read import ReadTool
 
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".txt", delete=False, encoding="utf-8"
@@ -452,7 +452,7 @@ class TestAgentToolLoopIntegration:
         """Test agent with actual Glob tool."""
         import tempfile
         from pathlib import Path
-        from claude_code.core.tools.glob import GlobTool
+        from deep_code.core.tools.glob import GlobTool
 
         with tempfile.TemporaryDirectory() as temp_dir:
             (Path(temp_dir) / "test1.py").write_text("# test1")
