@@ -174,12 +174,12 @@
 - **依赖**: T004-T009
 - **测试**: `tests/test_tools_permissions.py` ✅ 26 passed
 
-### T017 - 错误处理优化
-- [ ] 统一错误格式
-- [ ] 友好的错误提示
-- [ ] 错误恢复建议
+### T017 - 错误处理优化 ✅
+- [x] 统一错误格式
+- [x] 友好的错误提示
+- [x] 错误恢复建议
 - **依赖**: T010
-- **测试**: `tests/test_tools_errors.py`
+- **测试**: `tests/test_tools_errors.py` ✅ 30 passed
 
 ### T018 - 性能优化
 - [ ] 工具结果缓存
