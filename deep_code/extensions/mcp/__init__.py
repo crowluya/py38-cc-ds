@@ -1,29 +1,36 @@
 """
-MCP (Model Context Protocol) framework for DeepCode
+MCP (Model Context Protocol) Extensions
 
 Python 3.8.10 compatible
-Windows 7 + Internal Network (DeepSeek R1 70B)
-
-Provides:
-- MCP protocol parsing (JSON-RPC 2.0)
-- Tool server connection (stdio transport)
-- Dynamic tool registration
-- Configuration file support
+Implements MCP client for connecting to MCP servers.
 """
 
-from deep_code.extensions.mcp.protocol import MCPProtocol, MCPResponse, parse_tool_definition
-from deep_code.extensions.mcp.client import MCPClient, MCPError
-from deep_code.extensions.mcp.config import MCPConfig
-from deep_code.extensions.mcp.manager import MCPManager
-from deep_code.extensions.mcp.tools import MCPToolWrapper
+from deep_code.extensions.mcp.protocol import (
+    MCPMessage,
+    MCPRequest,
+    MCPResponse,
+    MCPNotification,
+    MCPError,
+    ErrorCode,
+    encode_message,
+    decode_message,
+    create_request,
+    create_response,
+    create_notification,
+    create_error_response,
+)
 
 __all__ = [
-    "MCPProtocol",
+    "MCPMessage",
+    "MCPRequest",
     "MCPResponse",
-    "parse_tool_definition",
-    "MCPClient",
+    "MCPNotification",
     "MCPError",
-    "MCPConfig",
-    "MCPManager",
-    "MCPToolWrapper",
+    "ErrorCode",
+    "encode_message",
+    "decode_message",
+    "create_request",
+    "create_response",
+    "create_notification",
+    "create_error_response",
 ]

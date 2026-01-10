@@ -451,7 +451,7 @@ After extraction, summarize the key points in a structured format.
 
 | 任务 | 状态 | 完成时间 | 备注 |
 |------|------|----------|------|
-| MCP-001 | ⬜ 待开始 | | |
+| MCP-001 | ✅ 完成 | 2026-01-11 | protocol.py 模块 |
 | MCP-002 | ⬜ 待开始 | | |
 | MCP-003 | ⬜ 待开始 | | |
 | MCP-004 | ⬜ 待开始 | | |
