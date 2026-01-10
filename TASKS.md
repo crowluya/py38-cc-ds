@@ -60,14 +60,14 @@
 - **依赖**: T001, T002
 - **测试**: `tests/test_tool_write.py` ✅ 16 passed
 
-### T006 - 实现 Edit 工具 `core/tools/edit.py`
-- [ ] 基于 `old_string` -> `new_string` 的精确替换
-- [ ] 支持 `replace_all` 参数
-- [ ] 唯一性检查 (old_string 必须唯一)
-- [ ] 保留文件权限和编码
-- [ ] 权限检查集成
+### T006 - 实现 Edit 工具 `core/tools/edit.py` ✅
+- [x] 基于 `old_string` -> `new_string` 的精确替换
+- [x] 支持 `replace_all` 参数
+- [x] 唯一性检查 (old_string 必须唯一)
+- [x] 保留文件权限和编码
+- [x] 权限检查集成
 - **依赖**: T001, T002
-- **测试**: `tests/test_tool_edit.py`
+- **测试**: `tests/test_tool_edit.py` ✅ 22 passed
 
 ### T007 - 实现 Bash 工具 `core/tools/bash.py`
 - [ ] 执行 shell 命令 (复用 `core/executor.py`)
