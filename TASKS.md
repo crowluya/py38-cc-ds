@@ -28,15 +28,15 @@
 - **依赖**: T001
 - **测试**: `tests/test_tools_registry.py` ✅ 24 passed
 
-### T003 - 更新 LLM Client 支持 Tool Use
-- [ ] 修改 `llm/client.py` 的 `chat_completion` 签名
+### T003 - 更新 LLM Client 支持 Tool Use ✅
+- [x] 修改 `llm/client.py` 的 `chat_completion` 签名
   - 添加 `tools: Optional[List[dict]]` 参数
   - 添加 `tool_choice: Optional[str]` 参数 ("auto", "none", 工具名)
-- [ ] 修改 `llm/openai_client.py` 实现 functions 调用
-- [ ] 修改 `llm/requests_client.py` 实现 (DeepSeek 兼容)
-- [ ] 返回值增加 `tool_calls` 字段
+- [x] 修改 `llm/openai_client.py` 实现 functions 调用
+- [x] 修改 `llm/requests_client.py` 实现 (DeepSeek 兼容)
+- [x] 返回值增加 `tool_calls` 字段
 - **依赖**: T001, T002
-- **测试**: `tests/test_llm_tools.py`
+- **测试**: `tests/test_llm_tools.py` ✅ 12 passed
 
 ---
 

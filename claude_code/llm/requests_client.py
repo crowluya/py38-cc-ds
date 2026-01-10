@@ -121,6 +121,8 @@ class RequestsClient(LLMClient):
         model: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[str] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
@@ -131,10 +133,12 @@ class RequestsClient(LLMClient):
             model: Model name override
             temperature: Temperature override
             max_tokens: Max tokens override
+            tools: List of tool definitions in OpenAI format
+            tool_choice: Tool choice mode ("auto", "none", or specific tool name)
             **kwargs: Additional parameters
 
         Returns:
-            Response dict with content
+            Response dict with content and optionally tool_calls
         """
         llm = self._settings.llm
 
@@ -143,21 +147,52 @@ class RequestsClient(LLMClient):
             "messages": messages,
             "temperature": temperature if temperature is not None else llm.temperature,
             "max_tokens": max_tokens if max_tokens is not None else llm.max_tokens,
-            **kwargs,
         }
+
+        # Add tools if provided
+        if tools:
+            # Try modern 'tools' format first, fall back to 'functions' for compatibility
+            payload["tools"] = tools
+            if tool_choice:
+                if tool_choice in ("auto", "none"):
+                    payload["tool_choice"] = tool_choice
+                else:
+                    payload["tool_choice"] = {"type": "function", "function": {"name": tool_choice}}
+
+        payload.update(kwargs)
 
         response = self._do_request(payload, stream=False)
         data = response.json()
 
-        return {
-            "content": data["choices"][0]["message"]["content"],
+        result = {
+            "content": data["choices"][0]["message"].get("content", "") or "",
             "model": data.get("model", llm.model),
             "usage": {
-                "prompt_tokens": data["usage"].get("prompt_tokens", 0),
-                "completion_tokens": data["usage"].get("completion_tokens", 0),
-                "total_tokens": data["usage"].get("total_tokens", 0),
+                "prompt_tokens": data.get("usage", {}).get("prompt_tokens", 0),
+                "completion_tokens": data.get("usage", {}).get("completion_tokens", 0),
+                "total_tokens": data.get("usage", {}).get("total_tokens", 0),
             },
+            "finish_reason": data["choices"][0].get("finish_reason", "stop"),
         }
+
+        # Extract tool_calls if present (modern format)
+        tool_calls = data["choices"][0]["message"].get("tool_calls")
+        if tool_calls:
+            result["tool_calls"] = tool_calls
+
+        # Extract function_call if present (legacy format)
+        function_call = data["choices"][0]["message"].get("function_call")
+        if function_call and not tool_calls:
+            result["tool_calls"] = [{
+                "id": f"call_{hash(str(function_call))}",
+                "type": "function",
+                "function": {
+                    "name": function_call.get("name", ""),
+                    "arguments": function_call.get("arguments", "{}"),
+                },
+            }]
+
+        return result
 
     def chat_completion_stream(
         self,
@@ -165,6 +200,8 @@ class RequestsClient(LLMClient):
         model: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[str] = None,
         **kwargs: Any,
     ) -> Iterator[Dict[str, Any]]:
         """
@@ -175,6 +212,8 @@ class RequestsClient(LLMClient):
             model: Model name override
             temperature: Temperature override
             max_tokens: Max tokens override
+            tools: List of tool definitions in OpenAI format
+            tool_choice: Tool choice mode
             **kwargs: Additional parameters
 
         Yields:
@@ -188,8 +227,18 @@ class RequestsClient(LLMClient):
             "temperature": temperature if temperature is not None else llm.temperature,
             "max_tokens": max_tokens if max_tokens is not None else llm.max_tokens,
             "stream": True,
-            **kwargs,
         }
+
+        # Add tools if provided
+        if tools:
+            payload["tools"] = tools
+            if tool_choice:
+                if tool_choice in ("auto", "none"):
+                    payload["tool_choice"] = tool_choice
+                else:
+                    payload["tool_choice"] = {"type": "function", "function": {"name": tool_choice}}
+
+        payload.update(kwargs)
 
         response = self._do_request(payload, stream=True)
 
@@ -215,6 +264,12 @@ class RequestsClient(LLMClient):
                 content = delta.get("content", "")
                 if content:
                     yield {"delta": content}
+
+                # Handle tool_calls in streaming
+                tool_calls = delta.get("tool_calls")
+                if tool_calls:
+                    yield {"tool_calls_delta": tool_calls}
+
             except (json.JSONDecodeError, KeyError):
                 continue
 
