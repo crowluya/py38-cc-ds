@@ -139,13 +139,13 @@
 
 ## Phase 4: 高级功能
 
-### T013 - 实现 TodoWrite 工具 `core/tools/todo.py`
-- [ ] 任务列表管理
-- [ ] 支持 pending/in_progress/completed 状态
-- [ ] 持久化到会话
-- [ ] CLI 显示任务列表
+### T013 - 实现 TodoWrite 工具 `core/tools/todo.py` ✅
+- [x] 任务列表管理
+- [x] 支持 pending/in_progress/completed 状态
+- [x] 持久化到会话
+- [x] CLI 显示任务列表
 - **依赖**: T001, T002
-- **测试**: `tests/test_tool_todo.py`
+- **测试**: `tests/test_tool_todo.py` ✅ 18 passed
 
 ### T014 - 实现 Task 工具 (子代理) `core/tools/task.py`
 - [ ] 启动子代理执行复杂任务
