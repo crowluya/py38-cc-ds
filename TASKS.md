@@ -42,14 +42,14 @@
 
 ## Phase 2: 核心工具实现
 
-### T004 - 实现 Read 工具 `core/tools/read.py`
-- [ ] 读取文件内容
-- [ ] 支持 `offset` 和 `limit` 参数 (行号范围)
-- [ ] 支持图片文件 (返回 base64)
-- [ ] 路径安全检查 (防止路径穿越)
-- [ ] 文件不存在时返回友好错误
+### T004 - 实现 Read 工具 `core/tools/read.py` ✅
+- [x] 读取文件内容
+- [x] 支持 `offset` 和 `limit` 参数 (行号范围)
+- [x] 支持图片文件 (返回 base64)
+- [x] 路径安全检查 (防止路径穿越)
+- [x] 文件不存在时返回友好错误
 - **依赖**: T001, T002
-- **测试**: `tests/test_tool_read.py`
+- **测试**: `tests/test_tool_read.py` ✅ 22 passed
 
 ### T005 - 实现 Write 工具 `core/tools/write.py`
 - [ ] 写入文件内容
