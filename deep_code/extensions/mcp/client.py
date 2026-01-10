@@ -1,224 +1,138 @@
 """
-MCP Client implementation for DeepCode
+MCP Client Core - Session Management
 
 Python 3.8.10 compatible
-Windows 7 + Internal Network (DeepSeek R1 70B)
-
-Provides stdio-based MCP server connection.
+Implements MCP client with initialize/shutdown handshake and request/response matching.
 """
 
-import json
-import subprocess
-import sys
-from typing import Any, Dict, List, Optional
+import threading
+import time
+from typing import Any, Dict, Optional, Union
 
-from deep_code.extensions.mcp.protocol import MCPProtocol, MCPResponse
-
-
-class MCPError(Exception):
-    """MCP-related error."""
-
-    def __init__(self, message: str, code: Optional[int] = None):
-        super().__init__(message)
-        self.code = code
+from deep_code.extensions.mcp.protocol import (
+    MCPRequest,
+    MCPResponse,
+    MCPNotification,
+    create_request,
+    create_error_response,
+    ErrorCode,
+)
+from deep_code.extensions.mcp.transport_stdio import StdioTransport
+from deep_code.extensions.mcp.transport_http import HttpTransport
+from deep_code.extensions.mcp.transport_sse import SseTransport
 
 
 class MCPClient:
     """
-    MCP Client for communicating with MCP servers.
-
-    Supports stdio transport (subprocess communication).
+    MCP client with session management.
+    
+    Handles initialize/shutdown handshake, request/response matching, and timeouts.
     """
 
     def __init__(
         self,
-        server_name: str,
-        config: Optional[Dict[str, Any]] = None,
-    ):
+        transport: Union[StdioTransport, HttpTransport, SseTransport],
+        default_timeout: float = 30.0,
+    ) -> None:
         """
         Initialize MCP client.
 
         Args:
-            server_name: Name of the MCP server
-            config: Server configuration with command, args, env
+            transport: Transport layer (stdio/http/sse)
+            default_timeout: Default request timeout in seconds
         """
-        self._server_name = server_name
-        self._config = config or {}
-        self._protocol = MCPProtocol()
-        self._process: Optional[subprocess.Popen] = None
-        self._connected = False
-        self._tools: List[Dict[str, Any]] = []
+        self._transport = transport
+        self._default_timeout = default_timeout
+        
+        # Request/response matching
+        self._pending_requests: Dict[Union[str, int], MCPResponse] = {}
+        self._request_lock = threading.Lock()
+        
+        # Session state
+        self._initialized = False
         self._server_info: Optional[Dict[str, Any]] = None
+        self._capabilities: Optional[Dict[str, Any]] = None
 
-    @property
-    def server_name(self) -> str:
-        """Get server name."""
-        return self._server_name
-
-    @property
-    def config(self) -> Dict[str, Any]:
-        """Get server configuration."""
-        return self._config
-
-    @property
-    def is_connected(self) -> bool:
-        """Check if connected to server."""
-        return self._connected and self._process is not None
-
-    def connect(self) -> None:
+    def initialize(
+        self,
+        client_info: Optional[Dict[str, Any]] = None,
+        capabilities: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
-        Connect to the MCP server.
+        Initialize MCP session.
+
+        Args:
+            client_info: Client information (name, version)
+            capabilities: Client capabilities
+
+        Returns:
+            Server information and capabilities
 
         Raises:
-            MCPError: If connection fails
+            RuntimeError: If initialization fails
         """
-        if self._connected:
-            return
+        if self._initialized:
+            raise RuntimeError("Client already initialized")
 
-        command = self._config.get("command")
-        if not command:
-            raise MCPError("No command specified in server config")
+        # Default client info
+        if client_info is None:
+            client_info = {
+                "name": "DeepCode",
+                "version": "0.1.0",
+            }
 
-        args = self._config.get("args", [])
-        env = self._config.get("env")
+        # Default capabilities
+        if capabilities is None:
+            capabilities = {}
 
-        # Build environment
-        process_env = None
-        if env:
-            import os
-            process_env = os.environ.copy()
-            process_env.update(env)
+        # Send initialize request
+        request = create_request(
+            method="initialize",
+            params={
+                "protocolVersion": "2024-11-05",
+                "clientInfo": client_info,
+                "capabilities": capabilities,
+            },
+        )
 
-        try:
-            # Start subprocess
-            self._process = subprocess.Popen(
-                [command] + args,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=process_env,
-            )
-
-            # Send initialize request
-            self._initialize()
-            self._connected = True
-
-        except FileNotFoundError:
-            raise MCPError(f"Command not found: {command}")
-        except Exception as e:
-            self._cleanup()
-            raise MCPError(f"Failed to connect: {str(e)}")
-
-    def _initialize(self) -> None:
-        """
-        Send initialize request and handle response.
-
-        Raises:
-            MCPError: If initialization fails
-        """
-        request = self._protocol.create_initialize_request()
         response = self._send_request(request)
 
-        if not response.success:
-            raise MCPError(f"Initialize failed: {response.error}")
+        if response.is_error:
+            raise RuntimeError(f"Initialize failed: {response.error}")
 
-        self._server_info = response.data
+        # Store server info
+        result = response.result or {}
+        self._server_info = result.get("serverInfo", {})
+        self._capabilities = result.get("capabilities", {})
+        self._initialized = True
 
         # Send initialized notification
-        notification = self._protocol.create_notification("notifications/initialized")
-        self._send_notification(notification)
+        self._send_notification("notifications/initialized")
 
-    def _send_request(self, request: Dict[str, Any]) -> MCPResponse:
-        """
-        Send a request and wait for response.
+        return result
 
-        Args:
-            request: Request dictionary
-
-        Returns:
-            MCPResponse with result or error
-        """
-        if not self._process or not self._process.stdin or not self._process.stdout:
-            return MCPResponse(success=False, error="Not connected")
-
-        try:
-            # Send request
-            request_str = json.dumps(request) + "\n"
-            self._process.stdin.write(request_str.encode("utf-8"))
-            self._process.stdin.flush()
-
-            # Read response
-            response_line = self._process.stdout.readline()
-            if not response_line:
-                return MCPResponse(success=False, error="No response from server")
-
-            return self._protocol.parse_response(response_line.decode("utf-8"))
-
-        except Exception as e:
-            return MCPResponse(success=False, error=str(e))
-
-    def _send_notification(self, notification: Dict[str, Any]) -> None:
-        """
-        Send a notification (no response expected).
-
-        Args:
-            notification: Notification dictionary
-        """
-        if not self._process or not self._process.stdin:
+    def shutdown(self) -> None:
+        """Shutdown MCP session."""
+        if not self._initialized:
             return
 
         try:
-            notification_str = json.dumps(notification) + "\n"
-            self._process.stdin.write(notification_str.encode("utf-8"))
-            self._process.stdin.flush()
+            # Send shutdown request
+            request = create_request(method="shutdown")
+            self._send_request(request, timeout=5.0)
         except Exception:
-            pass  # Notifications don't require response
-
-    def disconnect(self) -> None:
-        """Disconnect from the MCP server."""
-        self._cleanup()
-        self._connected = False
-
-    def _cleanup(self) -> None:
-        """Clean up subprocess resources."""
-        if self._process:
-            try:
-                self._process.terminate()
-                self._process.wait(timeout=5)
-            except Exception:
-                try:
-                    self._process.kill()
-                except Exception:
-                    pass
-            self._process = None
-
-    def list_tools(self) -> List[Dict[str, Any]]:
-        """
-        List available tools from the server.
-
-        Returns:
-            List of tool definitions
-        """
-        if not self._connected:
-            return []
-
-        request = self._protocol.create_tools_list_request()
-        response = self._send_request(request)
-
-        if not response.success:
-            return []
-
-        tools = response.data.get("tools", []) if response.data else []
-        self._tools = tools
-        return tools
+            # Ignore errors during shutdown
+            pass
+        finally:
+            self._initialized = False
 
     def call_tool(
         self,
         name: str,
         arguments: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+    ) -> Any:
         """
-        Call a tool on the server.
+        Call a tool on the MCP server.
 
         Args:
             name: Tool name
@@ -228,25 +142,275 @@ class MCPClient:
             Tool result
 
         Raises:
-            MCPError: If not connected or call fails
+            RuntimeError: If not initialized or call fails
         """
-        if not self._connected:
-            raise MCPError("Not connected to server")
+        if not self._initialized:
+            raise RuntimeError("Client not initialized")
 
-        request = self._protocol.create_tools_call_request(name, arguments)
+        request = create_request(
+            method="tools/call",
+            params={
+                "name": name,
+                "arguments": arguments or {},
+            },
+        )
+
         response = self._send_request(request)
 
-        if not response.success:
-            raise MCPError(f"Tool call failed: {response.error}", response.error_code)
+        if response.is_error:
+            raise RuntimeError(f"Tool call failed: {response.error}")
 
-        return response.data or {}
+        return response.result
+
+    def list_tools(self) -> list:
+        """
+        List available tools.
+
+        Returns:
+            List of tool definitions
+
+        Raises:
+            RuntimeError: If not initialized or request fails
+        """
+        if not self._initialized:
+            raise RuntimeError("Client not initialized")
+
+        request = create_request(method="tools/list")
+        response = self._send_request(request)
+
+        if response.is_error:
+            raise RuntimeError(f"List tools failed: {response.error}")
+
+        result = response.result or {}
+        return result.get("tools", [])
+
+    def list_resources(self) -> list:
+        """
+        List available resources.
+
+        Returns:
+            List of resource definitions
+
+        Raises:
+            RuntimeError: If not initialized or request fails
+        """
+        if not self._initialized:
+            raise RuntimeError("Client not initialized")
+
+        request = create_request(method="resources/list")
+        response = self._send_request(request)
+
+        if response.is_error:
+            raise RuntimeError(f"List resources failed: {response.error}")
+
+        result = response.result or {}
+        return result.get("resources", [])
+
+    def read_resource(self, uri: str) -> Dict[str, Any]:
+        """
+        Read a resource.
+
+        Args:
+            uri: Resource URI
+
+        Returns:
+            Resource content
+
+        Raises:
+            RuntimeError: If not initialized or request fails
+        """
+        if not self._initialized:
+            raise RuntimeError("Client not initialized")
+
+        request = create_request(
+            method="resources/read",
+            params={"uri": uri},
+        )
+        response = self._send_request(request)
+
+        if response.is_error:
+            raise RuntimeError(f"Read resource failed: {response.error}")
+
+        return response.result or {}
+
+    def list_prompts(self) -> list:
+        """
+        List available prompts.
+
+        Returns:
+            List of prompt definitions
+
+        Raises:
+            RuntimeError: If not initialized or request fails
+        """
+        if not self._initialized:
+            raise RuntimeError("Client not initialized")
+
+        request = create_request(method="prompts/list")
+        response = self._send_request(request)
+
+        if response.is_error:
+            raise RuntimeError(f"List prompts failed: {response.error}")
+
+        result = response.result or {}
+        return result.get("prompts", [])
+
+    def get_prompt(
+        self,
+        name: str,
+        arguments: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get a prompt.
+
+        Args:
+            name: Prompt name
+            arguments: Prompt arguments
+
+        Returns:
+            Prompt content
+
+        Raises:
+            RuntimeError: If not initialized or request fails
+        """
+        if not self._initialized:
+            raise RuntimeError("Client not initialized")
+
+        request = create_request(
+            method="prompts/get",
+            params={
+                "name": name,
+                "arguments": arguments or {},
+            },
+        )
+        response = self._send_request(request)
+
+        if response.is_error:
+            raise RuntimeError(f"Get prompt failed: {response.error}")
+
+        return response.result or {}
+
+    def _send_request(
+        self,
+        request: MCPRequest,
+        timeout: Optional[float] = None,
+    ) -> MCPResponse:
+        """
+        Send a request and wait for response.
+
+        Args:
+            request: Request to send
+            timeout: Timeout in seconds
+
+        Returns:
+            Response
+
+        Raises:
+            RuntimeError: If request fails or times out
+        """
+        timeout_val = timeout if timeout is not None else self._default_timeout
+
+        # For HTTP transport, send directly
+        if isinstance(self._transport, HttpTransport):
+            return self._transport.send(request)
+
+        # For stdio/sse transports, use async pattern
+        request_id = request.id
+
+        # Register pending request
+        with self._request_lock:
+            self._pending_requests[request_id] = None  # type: ignore
+
+        try:
+            # Send request
+            if isinstance(self._transport, StdioTransport):
+                self._transport.send(request)
+            else:
+                # SSE doesn't support sending requests
+                raise RuntimeError("SSE transport doesn't support requests")
+
+            # Wait for response
+            start_time = time.time()
+            while time.time() - start_time < timeout_val:
+                with self._request_lock:
+                    response = self._pending_requests.get(request_id)
+                    if response is not None:
+                        del self._pending_requests[request_id]
+                        return response
+
+                # Check for messages
+                if isinstance(self._transport, StdioTransport):
+                    msg = self._transport.receive(timeout=0.1)
+                    if msg and isinstance(msg, MCPResponse):
+                        with self._request_lock:
+                            if msg.id in self._pending_requests:
+                                self._pending_requests[msg.id] = msg
+
+                time.sleep(0.01)
+
+            # Timeout
+            with self._request_lock:
+                if request_id in self._pending_requests:
+                    del self._pending_requests[request_id]
+
+            return create_error_response(
+                request_id=request_id,
+                code=ErrorCode.TIMEOUT_ERROR,
+                message=f"Request timeout after {timeout_val}s",
+            )
+
+        except Exception as e:
+            with self._request_lock:
+                if request_id in self._pending_requests:
+                    del self._pending_requests[request_id]
+
+            return create_error_response(
+                request_id=request_id,
+                code=ErrorCode.INTERNAL_ERROR,
+                message=f"Request failed: {e}",
+            )
+
+    def _send_notification(self, method: str, params: Optional[Dict[str, Any]] = None) -> None:
+        """Send a notification (no response expected)."""
+        from deep_code.extensions.mcp.protocol import create_notification
+
+        notification = create_notification(method=method, params=params)
+
+        if isinstance(self._transport, HttpTransport):
+            # HTTP doesn't support notifications
+            pass
+        elif isinstance(self._transport, StdioTransport):
+            self._transport.send(notification)
+
+    @property
+    def is_initialized(self) -> bool:
+        """Check if client is initialized."""
+        return self._initialized
+
+    @property
+    def server_info(self) -> Optional[Dict[str, Any]]:
+        """Get server information."""
+        return self._server_info
+
+    @property
+    def capabilities(self) -> Optional[Dict[str, Any]]:
+        """Get server capabilities."""
+        return self._capabilities
+
+    def close(self) -> None:
+        """Close the client and transport."""
+        if self._initialized:
+            self.shutdown()
+
+        if isinstance(self._transport, StdioTransport):
+            self._transport.stop()
+        elif isinstance(self._transport, (HttpTransport, SseTransport)):
+            self._transport.close()
 
     def __enter__(self):
         """Context manager entry."""
-        self.connect()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
-        self.disconnect()
-        return False
+        self.close()
