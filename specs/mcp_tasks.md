@@ -463,9 +463,9 @@ After extraction, summarize the key points in a structured format.
 | MCP-010 | ✅ 完成 | 2026-01-11 | config.py 环境变量展开 |
 | MCP-011 | ✅ 完成 | 2026-01-11 | 配置作用域合并 |
 | MCP-012 | ✅ 完成 | 2026-01-11 | manager.py 服务器管理 |
-| MCP-013 | ⬜ 待开始 | | |
-| MCP-014 | ⬜ 待开始 | | |
-| MCP-015 | ⬜ 待开始 | | |
+| MCP-013 | ✅ 完成 | 2026-01-11 | MCPToolWrapper JSON Schema验证 |
+| MCP-014 | ✅ 完成 | 2026-01-11 | MCPToolRouter 工具路由 |
+| MCP-015 | ✅ 完成 | 2026-01-11 | resources.py 资源引用 |
 | MCP-016 | ⬜ 待开始 | | |
 | MCP-017 | ⬜ 待开始 | | |
 | MCP-018 | ⬜ 待开始 | | |
