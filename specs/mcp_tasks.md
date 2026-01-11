@@ -457,12 +457,12 @@ After extraction, summarize the key points in a structured format.
 | MCP-004 | ✅ 完成 | 2026-01-11 | transport_sse.py 模块 |
 | MCP-005 | ✅ 完成 | 2026-01-11 | client.py 模块 |
 | MCP-006 | ✅ 完成 | 2026-01-11 | capabilities.py 模块 |
-| MCP-007 | ⬜ 待开始 | | |
-| MCP-008 | ⬜ 待开始 | | |
-| MCP-009 | ⬜ 待开始 | | |
-| MCP-010 | ⬜ 待开始 | | |
-| MCP-011 | ⬜ 待开始 | | |
-| MCP-012 | ⬜ 待开始 | | |
+| MCP-007 | ✅ 完成 | 2026-01-11 | MCPResource 数据类 |
+| MCP-008 | ✅ 完成 | 2026-01-11 | MCPPrompt 数据类 |
+| MCP-009 | ✅ 完成 | 2026-01-11 | 动态更新通知处理 |
+| MCP-010 | ✅ 完成 | 2026-01-11 | config.py 环境变量展开 |
+| MCP-011 | ✅ 完成 | 2026-01-11 | 配置作用域合并 |
+| MCP-012 | ✅ 完成 | 2026-01-11 | manager.py 服务器管理 |
 | MCP-013 | ⬜ 待开始 | | |
 | MCP-014 | ⬜ 待开始 | | |
 | MCP-015 | ⬜ 待开始 | | |
