@@ -3,6 +3,11 @@
     "mermaid": {
       "command": "mermaid-mcp-server",
       "args": []
+    },
+    "desktop": {
+      "command": "python",
+      "args": ["-m", "desktop_mcp"],
+      "cwd": "./desktop-mcp-server"
     }
   }
 }
