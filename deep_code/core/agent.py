@@ -33,6 +33,18 @@ except ImportError:
     MCPToolRouter = None
     ResourceResolver = None
 
+# SKILL-010: Skills integration imports
+try:
+    from deep_code.extensions.skills.registry import SkillRegistry
+    from deep_code.extensions.skills.executor import SkillExecutor
+    from deep_code.core.tools.skill import SkillTool
+    SKILLS_AVAILABLE = True
+except ImportError:
+    SKILLS_AVAILABLE = False
+    SkillRegistry = None
+    SkillExecutor = None
+    SkillTool = None
+
 
 class MessageRole(Enum):
     """Message role in conversation."""
@@ -402,6 +414,9 @@ class AgentConfig:
     # MCP-019: MCP integration
     enable_mcp: bool = True
     mcp_auto_connect: bool = False
+    # SKILL-010: Skills integration
+    enable_skills: bool = True
+    include_user_skills: bool = True
 
 
 class Agent:
@@ -444,6 +459,13 @@ class Agent:
         self._mcp_resource_resolver: Optional[Any] = None
         if MCP_AVAILABLE and config.enable_mcp:
             self._init_mcp(config)
+
+        # SKILL-010: Initialize Skills
+        self._skill_registry: Optional[Any] = None
+        self._skill_executor: Optional[Any] = None
+        self._skill_tool: Optional[Any] = None
+        if SKILLS_AVAILABLE and config.enable_skills:
+            self._init_skills(config)
 
         # T051: Auto-load long-term memory files if enabled
         if config.auto_load_memory and config.project_root:
@@ -1186,6 +1208,112 @@ class Agent:
     def get_mcp_resource_resolver(self) -> Optional[Any]:
         """Get MCP resource resolver instance."""
         return self._mcp_resource_resolver
+
+    # SKILL-010: Skills Integration Methods
+
+    def _init_skills(self, config: AgentConfig) -> None:
+        """
+        Initialize Skills registry and executor.
+
+        Args:
+            config: Agent configuration
+        """
+        from pathlib import Path
+
+        project_root = Path(config.project_root) if config.project_root else None
+
+        # Create skill registry
+        self._skill_registry = SkillRegistry(
+            project_root=project_root,
+            include_user_skills=config.include_user_skills,
+        )
+
+        # Load skills
+        try:
+            self._skill_registry.load()
+        except Exception:
+            pass  # Skills may not exist
+
+        # Create skill executor
+        self._skill_executor = SkillExecutor()
+
+        # Create skill tool
+        self._skill_tool = SkillTool(
+            registry=self._skill_registry,
+            executor=self._skill_executor,
+        )
+
+        # Register skill tool in tool registry if available
+        if self._tool_registry:
+            try:
+                self._tool_registry.register(self._skill_tool, replace=True)
+            except Exception:
+                pass
+
+    def get_skill_registry(self) -> Optional[Any]:
+        """Get skill registry instance."""
+        return self._skill_registry
+
+    def get_skill_executor(self) -> Optional[Any]:
+        """Get skill executor instance."""
+        return self._skill_executor
+
+    def get_skill_tool(self) -> Optional[Any]:
+        """Get skill tool instance."""
+        return self._skill_tool
+
+    def invoke_skill(self, skill_name: str, args: str = "") -> Optional[str]:
+        """
+        Invoke a skill by name.
+
+        Args:
+            skill_name: Skill name (with or without leading slash)
+            args: Optional arguments
+
+        Returns:
+            Skill context string or None if skill not found
+        """
+        if not self._skill_tool:
+            return None
+
+        result = self._skill_tool.execute({
+            "skill": skill_name,
+            "args": args,
+        })
+
+        if result.success:
+            return result.output
+        return None
+
+    def is_skill_tool_allowed(self, tool_name: str) -> bool:
+        """
+        Check if a tool is allowed in the current skill context.
+
+        Args:
+            tool_name: Tool name to check
+
+        Returns:
+            True if allowed (or no active skill)
+        """
+        if not self._skill_executor:
+            return True
+        return self._skill_executor.is_tool_allowed(tool_name)
+
+    def get_active_skill_model(self) -> Optional[str]:
+        """
+        Get model override for active skill.
+
+        Returns:
+            Model name or None if no override
+        """
+        if not self._skill_executor:
+            return None
+        return self._skill_executor.get_model_override()
+
+    def deactivate_skill(self) -> None:
+        """Deactivate the current skill."""
+        if self._skill_executor:
+            self._skill_executor.deactivate()
 
     def close(self) -> None:
         """Close agent and cleanup resources."""

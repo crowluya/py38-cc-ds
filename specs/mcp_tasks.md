@@ -471,14 +471,14 @@ After extraction, summarize the key points in a structured format.
 | MCP-018 | ✅ 完成 | 2026-01-11 | /mcp 交互命令 |
 | MCP-019 | ✅ 完成 | 2026-01-11 | Agent MCP 集成 |
 | MCP-020 | ✅ 完成 | 2026-01-11 | 48个单元测试通过 |
-| SKILL-001 | ⬜ 待开始 | | |
-| SKILL-002 | ⬜ 待开始 | | |
-| SKILL-003 | ⬜ 待开始 | | |
-| SKILL-004 | ⬜ 待开始 | | |
-| SKILL-005 | ⬜ 待开始 | | |
-| SKILL-006 | ⬜ 待开始 | | |
-| SKILL-007 | ⬜ 待开始 | | |
-| SKILL-008 | ⬜ 待开始 | | |
-| SKILL-009 | ⬜ 待开始 | | |
-| SKILL-010 | ⬜ 待开始 | | |
-| SKILL-011 | ⬜ 待开始 | | |
+| SKILL-001 | ✅ 完成 | 2026-01-11 | loader.py 目录扫描 |
+| SKILL-002 | ✅ 完成 | 2026-01-11 | parser.py SKILL.md解析 |
+| SKILL-003 | ✅ 完成 | 2026-01-11 | registry.py 索引构建 |
+| SKILL-004 | ✅ 完成 | 2026-01-11 | matcher.py 任务匹配 |
+| SKILL-005 | ✅ 完成 | 2026-01-11 | skill.py 工具实现 |
+| SKILL-006 | ✅ 完成 | 2026-01-11 | executor.py 上下文注入 |
+| SKILL-007 | ✅ 完成 | 2026-01-11 | allowed-tools 白名单 |
+| SKILL-008 | ✅ 完成 | 2026-01-11 | 模型选择支持 |
+| SKILL-009 | ✅ 完成 | 2026-01-11 | Skills可用性列表 |
+| SKILL-010 | ✅ 完成 | 2026-01-11 | Agent Skills集成 |
+| SKILL-011 | ✅ 完成 | 2026-01-11 | 33个单元测试通过 |
