@@ -116,7 +116,8 @@ def parse_yaml_frontmatter(content: str) -> Dict[str, Any]:
 
             if value:
                 # Handle inline list: key: item1, item2, item3
-                if "," in value:
+                # But NOT for description field (should stay as string)
+                if "," in value and key not in ("description", "desc"):
                     result[key] = [v.strip() for v in value.split(",")]
                 # Handle quoted strings
                 elif value.startswith('"') and value.endswith('"'):
