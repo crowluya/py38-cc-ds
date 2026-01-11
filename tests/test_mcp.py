@@ -1,102 +1,70 @@
 """
-Tests for MCP (Model Context Protocol) framework (T015)
+Tests for MCP (Model Context Protocol) framework
 
 Python 3.8.10 compatible
+Tests for MCP-001 through MCP-020 implementations.
 """
 
 import pytest
 import json
 from typing import Any, Dict, List, Optional
-from unittest.mock import Mock, MagicMock, patch, AsyncMock
+from unittest.mock import Mock, MagicMock, patch
+from pathlib import Path
 
 
 class TestMCPProtocol:
-    """Tests for MCP protocol parsing."""
+    """Tests for MCP protocol message types (MCP-001)."""
 
     def test_create_request(self):
         """Test creating a JSON-RPC request."""
-        from deep_code.extensions.mcp.protocol import MCPProtocol
+        from deep_code.extensions.mcp.protocol import MCPRequest, create_request
 
-        protocol = MCPProtocol()
-        request = protocol.create_request("tools/list", {})
+        request = create_request("tools/list", {})
 
-        assert "jsonrpc" in request
-        assert request["jsonrpc"] == "2.0"
-        assert "method" in request
-        assert request["method"] == "tools/list"
-        assert "id" in request
-        assert "params" in request
+        assert request.jsonrpc == "2.0"
+        assert request.method == "tools/list"
+        assert request.id is not None
+        assert request.params == {}
 
     def test_create_request_with_params(self):
         """Test creating a request with parameters."""
-        from deep_code.extensions.mcp.protocol import MCPProtocol
+        from deep_code.extensions.mcp.protocol import create_request
 
-        protocol = MCPProtocol()
-        request = protocol.create_request("tools/call", {
+        request = create_request("tools/call", {
             "name": "read_file",
             "arguments": {"path": "/tmp/test.txt"}
         })
 
-        assert request["method"] == "tools/call"
-        assert request["params"]["name"] == "read_file"
-        assert request["params"]["arguments"]["path"] == "/tmp/test.txt"
+        assert request.method == "tools/call"
+        assert request.params["name"] == "read_file"
+        assert request.params["arguments"]["path"] == "/tmp/test.txt"
 
-    def test_parse_response_success(self):
-        """Test parsing a successful response."""
-        from deep_code.extensions.mcp.protocol import MCPProtocol
+    def test_request_to_dict(self):
+        """Test converting request to dictionary."""
+        from deep_code.extensions.mcp.protocol import MCPRequest
 
-        protocol = MCPProtocol()
-        response_data = {
+        request = MCPRequest(method="test", params={"key": "value"}, id=1)
+        data = request.to_dict()
+
+        assert data["jsonrpc"] == "2.0"
+        assert data["method"] == "test"
+        assert data["id"] == 1
+        assert data["params"] == {"key": "value"}
+
+    def test_request_from_dict(self):
+        """Test creating request from dictionary."""
+        from deep_code.extensions.mcp.protocol import MCPRequest
+
+        data = {
             "jsonrpc": "2.0",
             "id": 1,
-            "result": {"tools": [{"name": "test_tool"}]}
+            "method": "tools/list",
+            "params": {}
         }
+        request = MCPRequest.from_dict(data)
 
-        result = protocol.parse_response(json.dumps(response_data))
-
-        assert result.success is True
-        assert result.data == {"tools": [{"name": "test_tool"}]}
-        assert result.error is None
-
-    def test_parse_response_error(self):
-        """Test parsing an error response."""
-        from deep_code.extensions.mcp.protocol import MCPProtocol
-
-        protocol = MCPProtocol()
-        response_data = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "error": {
-                "code": -32600,
-                "message": "Invalid Request"
-            }
-        }
-
-        result = protocol.parse_response(json.dumps(response_data))
-
-        assert result.success is False
-        assert result.error is not None
-        assert "Invalid Request" in result.error
-
-    def test_parse_response_invalid_json(self):
-        """Test parsing invalid JSON."""
-        from deep_code.extensions.mcp.protocol import MCPProtocol
-
-        protocol = MCPProtocol()
-        result = protocol.parse_response("not valid json")
-
-        assert result.success is False
-        assert result.error is not None
-
-    def test_request_id_increments(self):
-        """Test that request IDs increment."""
-        from deep_code.extensions.mcp.protocol import MCPProtocol
-
-        protocol = MCPProtocol()
-        req1 = protocol.create_request("test", {})
-        req2 = protocol.create_request("test", {})
-
-        assert req2["id"] > req1["id"]
+        assert request.method == "tools/list"
+        assert request.id == 1
 
 
 class TestMCPResponse:
@@ -106,166 +74,134 @@ class TestMCPResponse:
         """Test creating a success response."""
         from deep_code.extensions.mcp.protocol import MCPResponse
 
-        response = MCPResponse(success=True, data={"key": "value"})
+        response = MCPResponse(id=1, result={"key": "value"})
 
-        assert response.success is True
-        assert response.data == {"key": "value"}
+        assert response.id == 1
+        assert response.result == {"key": "value"}
         assert response.error is None
+        assert response.is_error is False
 
     def test_error_response(self):
         """Test creating an error response."""
         from deep_code.extensions.mcp.protocol import MCPResponse
 
-        response = MCPResponse(success=False, error="Something went wrong")
+        response = MCPResponse(
+            id=1,
+            error={"code": -32600, "message": "Invalid Request"}
+        )
 
-        assert response.success is False
-        assert response.error == "Something went wrong"
-        assert response.data is None
+        assert response.id == 1
+        assert response.error is not None
+        assert response.is_error is True
 
+    def test_response_to_dict(self):
+        """Test converting response to dictionary."""
+        from deep_code.extensions.mcp.protocol import MCPResponse
 
-class TestMCPToolDefinition:
-    """Tests for MCP tool definition parsing."""
+        response = MCPResponse(id=1, result={"tools": []})
+        data = response.to_dict()
 
-    def test_parse_tool_definition(self):
-        """Test parsing an MCP tool definition."""
-        from deep_code.extensions.mcp.protocol import parse_tool_definition
+        assert data["jsonrpc"] == "2.0"
+        assert data["id"] == 1
+        assert data["result"] == {"tools": []}
 
-        mcp_tool = {
-            "name": "read_file",
-            "description": "Read a file from the filesystem",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Path to the file"
-                    }
-                },
-                "required": ["path"]
-            }
+    def test_response_from_dict(self):
+        """Test creating response from dictionary."""
+        from deep_code.extensions.mcp.protocol import MCPResponse
+
+        data = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {"tools": [{"name": "test_tool"}]}
         }
+        response = MCPResponse.from_dict(data)
 
-        tool_def = parse_tool_definition(mcp_tool)
-
-        assert tool_def["name"] == "read_file"
-        assert tool_def["description"] == "Read a file from the filesystem"
-        assert "parameters" in tool_def
-
-    def test_parse_tool_definition_minimal(self):
-        """Test parsing a minimal tool definition."""
-        from deep_code.extensions.mcp.protocol import parse_tool_definition
-
-        mcp_tool = {
-            "name": "simple_tool",
-            "description": "A simple tool"
-        }
-
-        tool_def = parse_tool_definition(mcp_tool)
-
-        assert tool_def["name"] == "simple_tool"
-        assert tool_def["description"] == "A simple tool"
+        assert response.id == 1
+        assert response.result == {"tools": [{"name": "test_tool"}]}
 
 
-class TestMCPClient:
-    """Tests for MCP client."""
+class TestMCPNotification:
+    """Tests for MCPNotification."""
 
-    def test_client_initialization(self):
-        """Test client initialization."""
-        from deep_code.extensions.mcp.client import MCPClient
+    def test_create_notification(self):
+        """Test creating a notification."""
+        from deep_code.extensions.mcp.protocol import create_notification
 
-        client = MCPClient(server_name="test-server")
+        notification = create_notification(
+            "notifications/tools/list_changed",
+            {}
+        )
 
-        assert client.server_name == "test-server"
-        assert client.is_connected is False
+        assert notification.method == "notifications/tools/list_changed"
+        assert notification.jsonrpc == "2.0"
 
-    def test_client_with_config(self):
-        """Test client with configuration."""
-        from deep_code.extensions.mcp.client import MCPClient
+    def test_notification_no_id(self):
+        """Test that notifications have no id."""
+        from deep_code.extensions.mcp.protocol import MCPNotification
 
-        config = {
-            "command": "python",
-            "args": ["-m", "mcp_server"],
-            "env": {"DEBUG": "1"}
-        }
-        client = MCPClient(server_name="test", config=config)
+        notification = MCPNotification(method="test")
+        data = notification.to_dict()
 
-        assert client.config == config
-
-    def test_list_tools_not_connected(self):
-        """Test listing tools when not connected."""
-        from deep_code.extensions.mcp.client import MCPClient
-
-        client = MCPClient(server_name="test")
-        tools = client.list_tools()
-
-        assert tools == []
-
-    def test_call_tool_not_connected(self):
-        """Test calling tool when not connected."""
-        from deep_code.extensions.mcp.client import MCPClient, MCPError
-
-        client = MCPClient(server_name="test")
-
-        with pytest.raises(MCPError) as exc_info:
-            client.call_tool("test_tool", {})
-
-        assert "not connected" in str(exc_info.value).lower()
+        assert "id" not in data
 
 
-class TestMCPClientConnection:
-    """Tests for MCP client connection handling."""
+class TestMCPMessageEncoding:
+    """Tests for message encoding/decoding."""
 
-    def test_connect_stdio(self):
-        """Test connecting via stdio transport."""
-        from deep_code.extensions.mcp.client import MCPClient
+    def test_encode_message(self):
+        """Test encoding message to JSON."""
+        from deep_code.extensions.mcp.protocol import MCPRequest, encode_message
 
-        with patch("subprocess.Popen") as mock_popen:
-            mock_process = Mock()
-            mock_process.stdin = Mock()
-            mock_process.stdout = Mock()
-            mock_process.poll.return_value = None
-            mock_popen.return_value = mock_process
+        request = MCPRequest(method="test", id=1)
+        encoded = encode_message(request)
 
-            # Mock the initialization response
-            mock_process.stdout.readline.return_value = json.dumps({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "result": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "test", "version": "1.0"}
-                }
-            }).encode() + b"\n"
+        assert isinstance(encoded, str)
+        data = json.loads(encoded)
+        assert data["method"] == "test"
 
-            client = MCPClient(
-                server_name="test",
-                config={"command": "python", "args": ["-m", "test_server"]}
-            )
+    def test_decode_request(self):
+        """Test decoding a request."""
+        from deep_code.extensions.mcp.protocol import decode_message, MCPRequest
 
-            # Connect should work with mocked subprocess
-            try:
-                client.connect()
-                # If connect succeeds, check state
-                assert client.is_connected or True  # May fail due to mock limitations
-            except Exception:
-                # Expected in test environment without real server
-                pass
+        data = json.dumps({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/list"
+        })
+        message = decode_message(data)
 
-    def test_disconnect(self):
-        """Test disconnecting from server."""
-        from deep_code.extensions.mcp.client import MCPClient
+        assert isinstance(message, MCPRequest)
+        assert message.method == "tools/list"
 
-        client = MCPClient(server_name="test")
-        client._connected = True
-        client._process = Mock()
+    def test_decode_response(self):
+        """Test decoding a response."""
+        from deep_code.extensions.mcp.protocol import decode_message, MCPResponse
 
-        client.disconnect()
+        data = json.dumps({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {"tools": []}
+        })
+        message = decode_message(data)
 
-        assert client.is_connected is False
+        assert isinstance(message, MCPResponse)
+        assert message.result == {"tools": []}
+
+    def test_decode_notification(self):
+        """Test decoding a notification."""
+        from deep_code.extensions.mcp.protocol import decode_message, MCPNotification
+
+        data = json.dumps({
+            "jsonrpc": "2.0",
+            "method": "notifications/tools/list_changed"
+        })
+        message = decode_message(data)
+
+        assert isinstance(message, MCPNotification)
 
 
 class TestMCPToolWrapper:
-    """Tests for MCP tool wrapper that integrates with ToolRegistry."""
+    """Tests for MCP tool wrapper (MCP-013)."""
 
     def test_create_wrapper_tool(self):
         """Test creating a wrapper tool from MCP definition."""
@@ -319,7 +255,6 @@ class TestMCPToolWrapper:
     def test_wrapper_tool_execute_error(self):
         """Test wrapper tool execution error handling."""
         from deep_code.extensions.mcp.tools import MCPToolWrapper
-        from deep_code.extensions.mcp.client import MCPError
 
         mcp_tool_def = {
             "name": "failing_tool",
@@ -327,7 +262,7 @@ class TestMCPToolWrapper:
         }
 
         mock_client = Mock()
-        mock_client.call_tool.side_effect = MCPError("Tool execution failed")
+        mock_client.call_tool.side_effect = RuntimeError("Tool execution failed")
 
         wrapper = MCPToolWrapper(
             tool_definition=mcp_tool_def,
@@ -369,11 +304,187 @@ class TestMCPToolWrapper:
         assert "param1" in schema["function"]["parameters"]["properties"]
 
 
-class TestMCPConfig:
-    """Tests for MCP configuration."""
+class TestMCPToolRouter:
+    """Tests for MCP tool router (MCP-014)."""
 
-    def test_load_config_from_dict(self):
-        """Test loading config from dictionary."""
+    def test_router_register(self):
+        """Test registering a tool."""
+        from deep_code.extensions.mcp.tools import MCPToolWrapper, MCPToolRouter
+
+        router = MCPToolRouter()
+        mock_client = Mock()
+        wrapper = MCPToolWrapper(
+            tool_definition={"name": "test", "description": "Test"},
+            mcp_client=mock_client,
+            server_name="server"
+        )
+
+        router.register(wrapper)
+
+        assert len(router) == 1
+        assert wrapper.name in router
+
+    def test_router_get(self):
+        """Test getting a tool by name."""
+        from deep_code.extensions.mcp.tools import MCPToolWrapper, MCPToolRouter
+
+        router = MCPToolRouter()
+        mock_client = Mock()
+        wrapper = MCPToolWrapper(
+            tool_definition={"name": "test", "description": "Test"},
+            mcp_client=mock_client,
+            server_name="server"
+        )
+        router.register(wrapper)
+
+        found = router.get(wrapper.name)
+        assert found is wrapper
+
+        # Also find by original name
+        found_by_original = router.get("test")
+        assert found_by_original is wrapper
+
+    def test_router_call(self):
+        """Test calling a tool through router."""
+        from deep_code.extensions.mcp.tools import MCPToolWrapper, MCPToolRouter
+
+        router = MCPToolRouter()
+        mock_client = Mock()
+        mock_client.call_tool.return_value = "result"
+
+        wrapper = MCPToolWrapper(
+            tool_definition={"name": "test", "description": "Test"},
+            mcp_client=mock_client,
+            server_name="server"
+        )
+        router.register(wrapper)
+
+        result = router.call(wrapper.name, {"arg": "value"})
+
+        assert result.success is True
+
+    def test_router_clear(self):
+        """Test clearing all tools."""
+        from deep_code.extensions.mcp.tools import MCPToolWrapper, MCPToolRouter
+
+        router = MCPToolRouter()
+        mock_client = Mock()
+        wrapper = MCPToolWrapper(
+            tool_definition={"name": "test", "description": "Test"},
+            mcp_client=mock_client,
+            server_name="server"
+        )
+        router.register(wrapper)
+
+        router.clear()
+
+        assert len(router) == 0
+
+
+class TestJSONSchemaValidation:
+    """Tests for JSON Schema validation (MCP-013)."""
+
+    def test_validate_string(self):
+        """Test validating string type."""
+        from deep_code.extensions.mcp.tools import validate_json_schema
+
+        schema = {"type": "string"}
+        errors = validate_json_schema("hello", schema)
+        assert len(errors) == 0
+
+        errors = validate_json_schema(123, schema)
+        assert len(errors) > 0
+
+    def test_validate_object(self):
+        """Test validating object type."""
+        from deep_code.extensions.mcp.tools import validate_json_schema
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"}
+            },
+            "required": ["name"]
+        }
+
+        errors = validate_json_schema({"name": "test"}, schema)
+        assert len(errors) == 0
+
+        errors = validate_json_schema({}, schema)
+        assert len(errors) > 0  # Missing required
+
+    def test_validate_array(self):
+        """Test validating array type."""
+        from deep_code.extensions.mcp.tools import validate_json_schema
+
+        schema = {
+            "type": "array",
+            "items": {"type": "string"}
+        }
+
+        errors = validate_json_schema(["a", "b"], schema)
+        assert len(errors) == 0
+
+        errors = validate_json_schema([1, 2], schema)
+        assert len(errors) > 0
+
+
+class TestOutputTruncation:
+    """Tests for output truncation (MCP-014)."""
+
+    def test_truncate_short_output(self):
+        """Test that short output is not truncated."""
+        from deep_code.extensions.mcp.tools import truncate_output
+
+        output = "short output"
+        result = truncate_output(output, limit=100)
+
+        assert result == output
+
+    def test_truncate_long_output(self):
+        """Test that long output is truncated."""
+        from deep_code.extensions.mcp.tools import truncate_output
+
+        output = "x" * 200
+        result = truncate_output(output, limit=100)
+
+        assert len(result) < len(output)
+        assert "truncated" in result.lower()
+
+
+class TestMCPConfig:
+    """Tests for MCP configuration (MCP-010, MCP-011)."""
+
+    def test_server_config_from_dict(self):
+        """Test creating server config from dictionary."""
+        from deep_code.extensions.mcp.config import MCPServerConfig
+
+        config = MCPServerConfig.from_dict("test", {
+            "command": "npx",
+            "args": ["-y", "server"],
+            "env": {"KEY": "value"}
+        })
+
+        assert config.name == "test"
+        assert config.command == "npx"
+        assert config.args == ["-y", "server"]
+        assert config.env == {"KEY": "value"}
+
+    def test_server_config_http(self):
+        """Test HTTP server config."""
+        from deep_code.extensions.mcp.config import MCPServerConfig
+
+        config = MCPServerConfig.from_dict("api", {
+            "type": "http",
+            "url": "https://api.example.com/mcp",
+            "headers": {"Authorization": "Bearer token"}
+        })
+
+        assert config.transport_type == "http"
+        assert config.url == "https://api.example.com/mcp"
+
+    def test_mcp_config_from_dict(self):
+        """Test loading MCPConfig from dictionary."""
         from deep_code.extensions.mcp.config import MCPConfig
 
         config_dict = {
@@ -392,17 +503,17 @@ class TestMCPConfig:
 
         config = MCPConfig.from_dict(config_dict)
 
-        assert len(config.servers) == 2
-        assert "filesystem" in config.servers
-        assert "github" in config.servers
+        assert len(config) == 2
+        assert "filesystem" in config.list_servers()
+        assert "github" in config.list_servers()
 
-    def test_load_config_empty(self):
+    def test_mcp_config_empty(self):
         """Test loading empty config."""
         from deep_code.extensions.mcp.config import MCPConfig
 
         config = MCPConfig.from_dict({})
 
-        assert len(config.servers) == 0
+        assert len(config) == 0
 
     def test_get_server_config(self):
         """Test getting server configuration."""
@@ -421,7 +532,7 @@ class TestMCPConfig:
         server_config = config.get_server("test")
 
         assert server_config is not None
-        assert server_config["command"] == "python"
+        assert server_config.command == "python"
 
     def test_get_nonexistent_server(self):
         """Test getting non-existent server config."""
@@ -432,25 +543,44 @@ class TestMCPConfig:
 
         assert server_config is None
 
-    def test_load_config_from_file(self, tmp_path):
-        """Test loading config from JSON file."""
-        from deep_code.extensions.mcp.config import MCPConfig
 
-        config_file = tmp_path / "mcp_config.json"
-        config_data = {
-            "mcpServers": {
-                "test": {"command": "test_cmd"}
-            }
-        }
-        config_file.write_text(json.dumps(config_data), encoding="utf-8")
+class TestEnvVarExpansion:
+    """Tests for environment variable expansion (MCP-010)."""
 
-        config = MCPConfig.from_file(str(config_file))
+    def test_expand_simple_var(self):
+        """Test expanding simple variable."""
+        from deep_code.extensions.mcp.config import expand_env_vars
+        import os
 
-        assert "test" in config.servers
+        os.environ["TEST_VAR"] = "test_value"
+        result = expand_env_vars("${TEST_VAR}")
+
+        assert result == "test_value"
+
+    def test_expand_with_default(self):
+        """Test expanding with default value."""
+        from deep_code.extensions.mcp.config import expand_env_vars
+        import os
+
+        # Ensure var doesn't exist
+        os.environ.pop("NONEXISTENT_VAR", None)
+        result = expand_env_vars("${NONEXISTENT_VAR:-default}")
+
+        assert result == "default"
+
+    def test_expand_in_string(self):
+        """Test expanding variable in string."""
+        from deep_code.extensions.mcp.config import expand_env_vars
+        import os
+
+        os.environ["PREFIX"] = "hello"
+        result = expand_env_vars("${PREFIX}_world")
+
+        assert result == "hello_world"
 
 
 class TestMCPManager:
-    """Tests for MCP manager that handles multiple servers."""
+    """Tests for MCP manager (MCP-012)."""
 
     def test_manager_initialization(self):
         """Test manager initialization."""
@@ -458,103 +588,103 @@ class TestMCPManager:
 
         manager = MCPManager()
 
-        assert len(manager.clients) == 0
+        assert len(manager) == 0
 
     def test_manager_add_server(self):
         """Test adding a server to manager."""
         from deep_code.extensions.mcp.manager import MCPManager
+        from deep_code.extensions.mcp.config import MCPServerConfig
 
         manager = MCPManager()
-        manager.add_server("test", {"command": "test_cmd"})
+        config = MCPServerConfig(name="test", command="echo")
+        manager.add_server(config)
 
-        assert "test" in manager.clients
+        assert "test" in manager
+        assert len(manager) == 1
 
     def test_manager_remove_server(self):
         """Test removing a server from manager."""
         from deep_code.extensions.mcp.manager import MCPManager
+        from deep_code.extensions.mcp.config import MCPServerConfig
 
         manager = MCPManager()
-        manager.add_server("test", {"command": "test_cmd"})
+        config = MCPServerConfig(name="test", command="echo")
+        manager.add_server(config)
         manager.remove_server("test")
 
-        assert "test" not in manager.clients
+        assert "test" not in manager
 
-    def test_manager_get_all_tools(self):
-        """Test getting all tools from all servers."""
+    def test_manager_list_servers(self):
+        """Test listing servers."""
         from deep_code.extensions.mcp.manager import MCPManager
+        from deep_code.extensions.mcp.config import MCPServerConfig
 
         manager = MCPManager()
+        manager.add_server(MCPServerConfig(name="server1", command="cmd1"))
+        manager.add_server(MCPServerConfig(name="server2", command="cmd2"))
 
-        # Mock client with tools
-        mock_client = Mock()
-        mock_client.list_tools.return_value = [
-            {"name": "tool1", "description": "Tool 1"},
-            {"name": "tool2", "description": "Tool 2"}
-        ]
-        mock_client.is_connected = True
+        servers = manager.list_servers()
 
-        manager._clients["test"] = mock_client
+        assert "server1" in servers
+        assert "server2" in servers
 
-        tools = manager.get_all_tools()
-
-        assert len(tools) >= 0  # May be empty if not connected
-
-    def test_manager_register_tools_to_registry(self):
-        """Test registering MCP tools to ToolRegistry."""
-        from deep_code.extensions.mcp.manager import MCPManager
-        from deep_code.core.tools.registry import ToolRegistry
+    def test_manager_get_status(self):
+        """Test getting server status."""
+        from deep_code.extensions.mcp.manager import MCPManager, ServerStatus
+        from deep_code.extensions.mcp.config import MCPServerConfig
 
         manager = MCPManager()
-        registry = ToolRegistry()
+        manager.add_server(MCPServerConfig(name="test", command="echo"))
 
-        # Mock client with tools
-        mock_client = Mock()
-        mock_client.list_tools.return_value = [
-            {"name": "mcp_tool", "description": "MCP Tool"}
-        ]
-        mock_client.is_connected = True
-        mock_client.server_name = "test-server"
+        status = manager.get_status("test")
 
-        manager._clients["test-server"] = mock_client
+        assert status == ServerStatus.DISCONNECTED
 
-        count = manager.register_tools(registry)
 
-        # Should register tools (may be 0 if mocking doesn't work fully)
-        assert count >= 0
+class TestMCPResources:
+    """Tests for MCP resource references (MCP-015)."""
+
+    def test_parse_resource_reference(self):
+        """Test parsing resource reference."""
+        from deep_code.extensions.mcp.resources import ResourceReference
+
+        ref = ResourceReference.parse("@mcp:notion:project-notes")
+
+        assert ref is not None
+        assert ref.server_name == "notion"
+        assert ref.resource_uri == "project-notes"
+
+    def test_find_resource_references(self):
+        """Test finding multiple references in text."""
+        from deep_code.extensions.mcp.resources import find_resource_references
+
+        text = "Check @mcp:notion:notes and @mcp:github:issues"
+        refs = find_resource_references(text)
+
+        assert len(refs) == 2
+        assert refs[0].server_name == "notion"
+        assert refs[1].server_name == "github"
+
+    def test_resource_content_format(self):
+        """Test formatting resource content."""
+        from deep_code.extensions.mcp.resources import ResourceContent
+
+        content = ResourceContent(
+            uri="file:///test.txt",
+            name="test.txt",
+            content="Hello world",
+            mime_type="text/plain",
+            server_name="filesystem"
+        )
+
+        formatted = content.to_context_string()
+
+        assert "test.txt" in formatted
+        assert "Hello world" in formatted
 
 
 class TestMCPIntegration:
     """Integration tests for MCP framework."""
-
-    def test_full_workflow(self):
-        """Test full MCP workflow: config -> connect -> list tools -> call tool."""
-        from deep_code.extensions.mcp.config import MCPConfig
-        from deep_code.extensions.mcp.manager import MCPManager
-        from deep_code.core.tools.registry import ToolRegistry
-
-        # Create config
-        config = MCPConfig.from_dict({
-            "mcpServers": {
-                "mock-server": {
-                    "command": "echo",
-                    "args": ["test"]
-                }
-            }
-        })
-
-        # Create manager
-        manager = MCPManager()
-
-        # Add servers from config
-        for name, server_config in config.servers.items():
-            manager.add_server(name, server_config)
-
-        # Create registry
-        registry = ToolRegistry()
-
-        # This would normally connect and register tools
-        # In test, we just verify the structure works
-        assert "mock-server" in manager.clients
 
     def test_tool_naming_convention(self):
         """Test that MCP tools follow naming convention: mcp__server__toolname."""
@@ -580,3 +710,25 @@ class TestMCPIntegration:
         )
 
         assert wrapper.category == ToolCategory.MCP
+
+    def test_manager_context_manager(self):
+        """Test manager as context manager."""
+        from deep_code.extensions.mcp.manager import MCPManager
+
+        with MCPManager() as manager:
+            assert manager is not None
+
+    def test_resource_resolver_caching(self):
+        """Test resource resolver caching."""
+        from deep_code.extensions.mcp.resources import ResourceResolver
+        from deep_code.extensions.mcp.manager import MCPManager
+
+        manager = MCPManager()
+        resolver = ResourceResolver(manager)
+
+        # Cache should be empty initially
+        assert len(resolver._cache) == 0
+
+        # Clear cache should work
+        resolver.clear_cache()
+        assert len(resolver._cache) == 0

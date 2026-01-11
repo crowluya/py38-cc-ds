@@ -20,6 +20,19 @@ from deep_code.core.tools.base import ToolCall as NewToolCall, ToolResult as New
 from deep_code.core.tools.registry import ToolRegistry
 from deep_code.core.tool_executor import ToolExecutor
 
+# MCP-019: MCP integration imports
+try:
+    from deep_code.extensions.mcp.manager import MCPManager
+    from deep_code.extensions.mcp.tools import MCPToolWrapper, MCPToolRouter
+    from deep_code.extensions.mcp.resources import ResourceResolver
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
+    MCPManager = None
+    MCPToolWrapper = None
+    MCPToolRouter = None
+    ResourceResolver = None
+
 
 class MessageRole(Enum):
     """Message role in conversation."""
@@ -386,6 +399,9 @@ class AgentConfig:
     tool_registry: Optional[ToolRegistry] = None
     max_tool_rounds: int = 10
     on_tool_call: Optional[Callable[[NewToolCall, NewToolResult], None]] = None
+    # MCP-019: MCP integration
+    enable_mcp: bool = True
+    mcp_auto_connect: bool = False
 
 
 class Agent:
@@ -421,6 +437,13 @@ class Agent:
                 registry=self._tool_registry,
                 require_approval=False,
             )
+
+        # MCP-019: Initialize MCP manager
+        self._mcp_manager: Optional[Any] = None
+        self._mcp_tool_router: Optional[Any] = None
+        self._mcp_resource_resolver: Optional[Any] = None
+        if MCP_AVAILABLE and config.enable_mcp:
+            self._init_mcp(config)
 
         # T051: Auto-load long-term memory files if enabled
         if config.auto_load_memory and config.project_root:
@@ -1047,6 +1070,128 @@ class Agent:
                 tool_result=tool_result,
             )
         )
+
+    # MCP-019: MCP Integration Methods
+
+    def _init_mcp(self, config: AgentConfig) -> None:
+        """
+        Initialize MCP manager and register tools.
+
+        Args:
+            config: Agent configuration
+        """
+        from pathlib import Path
+
+        project_root = Path(config.project_root) if config.project_root else None
+
+        # Create MCP manager
+        self._mcp_manager = MCPManager(
+            project_root=project_root,
+            auto_connect=config.mcp_auto_connect,
+        )
+
+        # Load configuration
+        try:
+            self._mcp_manager.load_config()
+        except Exception:
+            pass  # Config may not exist
+
+        # Create tool router
+        self._mcp_tool_router = MCPToolRouter()
+
+        # Create resource resolver
+        self._mcp_resource_resolver = ResourceResolver(self._mcp_manager)
+
+        # Register MCP tools if auto-connect is enabled
+        if config.mcp_auto_connect:
+            self._register_mcp_tools()
+
+    def _register_mcp_tools(self) -> None:
+        """Register MCP tools from connected servers."""
+        if not self._mcp_manager or not self._mcp_tool_router:
+            return
+
+        # Clear existing MCP tools
+        self._mcp_tool_router.clear()
+
+        # Get all tools from connected servers
+        for server_name in self._mcp_manager.list_connected_servers():
+            client = self._mcp_manager.get_client(server_name)
+            if not client:
+                continue
+
+            try:
+                tools = client.list_tools()
+                for tool_def in tools:
+                    wrapper = MCPToolWrapper(
+                        tool_definition=tool_def,
+                        mcp_client=client,
+                        server_name=server_name,
+                    )
+                    self._mcp_tool_router.register(wrapper)
+
+                    # Also register in tool registry if available
+                    if self._tool_registry:
+                        try:
+                            self._tool_registry.register(wrapper, replace=True)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+    def connect_mcp_server(self, name: str) -> bool:
+        """
+        Connect to an MCP server.
+
+        Args:
+            name: Server name
+
+        Returns:
+            True if connected successfully
+        """
+        if not self._mcp_manager:
+            return False
+
+        result = self._mcp_manager.connect(name)
+        if result:
+            self._register_mcp_tools()
+        return result
+
+    def disconnect_mcp_server(self, name: str) -> bool:
+        """
+        Disconnect from an MCP server.
+
+        Args:
+            name: Server name
+
+        Returns:
+            True if disconnected successfully
+        """
+        if not self._mcp_manager:
+            return False
+
+        result = self._mcp_manager.disconnect(name)
+        if result:
+            self._register_mcp_tools()
+        return result
+
+    def get_mcp_manager(self) -> Optional[Any]:
+        """Get MCP manager instance."""
+        return self._mcp_manager
+
+    def get_mcp_tool_router(self) -> Optional[Any]:
+        """Get MCP tool router instance."""
+        return self._mcp_tool_router
+
+    def get_mcp_resource_resolver(self) -> Optional[Any]:
+        """Get MCP resource resolver instance."""
+        return self._mcp_resource_resolver
+
+    def close(self) -> None:
+        """Close agent and cleanup resources."""
+        if self._mcp_manager:
+            self._mcp_manager.close()
+            self._mcp_manager = None
 
 
 def create_agent(

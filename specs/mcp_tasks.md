@@ -469,8 +469,8 @@ After extraction, summarize the key points in a structured format.
 | MCP-016 | ✅ 完成 | 2026-01-11 | deepcode mcp add 命令 |
 | MCP-017 | ✅ 完成 | 2026-01-11 | mcp list/get/remove 命令 |
 | MCP-018 | ✅ 完成 | 2026-01-11 | /mcp 交互命令 |
-| MCP-019 | ⬜ 待开始 | | |
-| MCP-020 | ⬜ 待开始 | | |
+| MCP-019 | ✅ 完成 | 2026-01-11 | Agent MCP 集成 |
+| MCP-020 | ✅ 完成 | 2026-01-11 | 48个单元测试通过 |
 | SKILL-001 | ⬜ 待开始 | | |
 | SKILL-002 | ⬜ 待开始 | | |
 | SKILL-003 | ⬜ 待开始 | | |
