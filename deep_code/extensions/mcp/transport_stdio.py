@@ -159,40 +159,34 @@ class StdioTransport:
         if not self._process or not self._process.stdout:
             return
 
-        buffer = b""
-        
+        # Use readline for line-based protocol (more efficient than chunked read)
         while self._running:
             try:
-                # Read chunk
-                chunk = self._process.stdout.read(1024)
-                if not chunk:
+                # Read one line at a time (blocks until newline or EOF)
+                line = self._process.stdout.readline()
+                if not line:
                     # EOF reached
                     break
 
-                buffer += chunk
+                line = line.strip()
+                if not line:
+                    continue
 
-                # Process complete lines
-                while b"\n" in buffer:
-                    line, buffer = buffer.split(b"\n", 1)
-                    
-                    if not line.strip():
-                        continue
+                try:
+                    # Decode and parse message
+                    json_str = line.decode("utf-8")
+                    message = decode_message(json_str)
 
-                    try:
-                        # Decode and parse message
-                        json_str = line.decode("utf-8")
-                        message = decode_message(json_str)
+                    # Queue message
+                    self._message_queue.put(message)
 
-                        # Queue message
-                        self._message_queue.put(message)
+                    # Call handler if set
+                    if self._on_message:
+                        self._on_message(message)
 
-                        # Call handler if set
-                        if self._on_message:
-                            self._on_message(message)
-
-                    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                        # Log error but continue
-                        pass
+                except (ValueError, UnicodeDecodeError):
+                    # Log error but continue
+                    pass
 
             except Exception:
                 # Stop on error
