@@ -466,9 +466,9 @@ After extraction, summarize the key points in a structured format.
 | MCP-013 | ✅ 完成 | 2026-01-11 | MCPToolWrapper JSON Schema验证 |
 | MCP-014 | ✅ 完成 | 2026-01-11 | MCPToolRouter 工具路由 |
 | MCP-015 | ✅ 完成 | 2026-01-11 | resources.py 资源引用 |
-| MCP-016 | ⬜ 待开始 | | |
-| MCP-017 | ⬜ 待开始 | | |
-| MCP-018 | ⬜ 待开始 | | |
+| MCP-016 | ✅ 完成 | 2026-01-11 | deepcode mcp add 命令 |
+| MCP-017 | ✅ 完成 | 2026-01-11 | mcp list/get/remove 命令 |
+| MCP-018 | ✅ 完成 | 2026-01-11 | /mcp 交互命令 |
 | MCP-019 | ⬜ 待开始 | | |
 | MCP-020 | ⬜ 待开始 | | |
 | SKILL-001 | ⬜ 待开始 | | |

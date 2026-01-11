@@ -44,6 +44,7 @@ from deep_code.cli.local_commands import handle_local_command as _handle_local_c
 from deep_code.config.loader import load_settings
 from deep_code.core.agent import Agent, AgentConfig
 from deep_code.llm.factory import create_llm_client
+from deep_code.cli.mcp_commands import mcp_group
 
 # Initialize colorama for Windows 7 ANSI support
 colorama.init()
@@ -195,6 +196,10 @@ def cli(ctx: click.Context) -> None:
     """
     # Context object for sharing state between commands
     ctx.ensure_object(dict)
+
+
+# Register MCP command group (MCP-016, MCP-017, MCP-018)
+cli.add_command(mcp_group)
 
 
 @cli.command(name="print")
