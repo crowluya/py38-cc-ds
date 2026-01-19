@@ -1,0 +1,11 @@
+# Sleepless Agent managed ignores
+data/
+
+# Ignore cloned projects (they have their own git repos)
+projects/
+
+# Ignore task directories that contain nested git repos
+tasks/**/.git/
+
+# Logs directory
+.logs/

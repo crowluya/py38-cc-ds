@@ -1,0 +1,29 @@
+{
+  "mappings": [
+    {
+      "pattern": "~/projects/*/package.json",
+      "project_name": "Web Development",
+      "priority": 10
+    },
+    {
+      "pattern": "~/work/**/*",
+      "project_name": "Work",
+      "priority": 100
+    },
+    {
+      "pattern": "~/projects/*/README.md",
+      "project_name": "Documentation",
+      "priority": 5
+    },
+    {
+      "pattern": "**/*.ts",
+      "project_name": "TypeScript Development",
+      "priority": 8
+    },
+    {
+      "pattern": "**/*.py",
+      "project_name": "Python Development",
+      "priority": 8
+    }
+  ]
+}

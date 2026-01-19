@@ -1,0 +1,114 @@
+# Default configuration for LogAnalyzer
+
+# Analysis settings
+analysis:
+  # Statistical thresholds
+  zscore_threshold: 3.0  # Standard deviations for anomaly detection
+  iqr_multiplier: 1.5    # IQR multiplier for outlier detection
+  min_error_rate: 0.05   # Minimum error rate to trigger alerts (5%)
+
+  # Baseline settings
+  baseline_window: 1000      # Number of entries for baseline calculation
+  moving_average_window: 50  # Window for moving average
+
+  # Pattern detection
+  min_pattern_frequency: 5    # Minimum occurrences for pattern consideration
+  pattern_change_threshold: 2.0  # Significant change multiplier
+
+# Severity scoring (0-10 scale)
+severity:
+  critical_threshold: 9  # Immediate attention required
+  high_threshold: 7      # Urgent attention needed
+  medium_threshold: 5    # Investigate soon
+  low_threshold: 3       # Informational
+  info_threshold: 1      # Normal activity
+
+  # Weights for severity calculation
+  weights:
+    frequency: 0.4      # How often it occurs
+    deviation: 0.3      # How far from normal
+    impact: 0.3         # Potential impact
+
+# Alert configuration
+alerts:
+  enabled: true
+  min_severity: 7  # Only alert for HIGH and CRITICAL
+
+  # Alert channels
+  channels:
+    - console  # Print to console
+
+  # Optional email alerts (requires configuration)
+  # email:
+  #   enabled: false
+  #   smtp_host: smtp.example.com
+  #   smtp_port: 587
+  #   from: alerts@example.com
+  #   to: ops-team@example.com
+  #   subject: "LogAnalyzer Alert"
+
+  # Optional webhook alerts
+  # webhook:
+  #   enabled: false
+  #   url: https://hooks.example.com/alerts
+
+  # Alert suppression (avoid spam)
+  suppression:
+    enabled: true
+    window_minutes: 15  # Suppress similar alerts within this window
+    max_alerts_per_window: 5
+
+# Parser settings
+parsers:
+  # Auto-detect format
+  auto_detect: true
+
+  # Date formats to try (in order)
+  date_formats:
+    - "%Y-%m-%dT%H:%M:%S.%fZ"      # ISO 8601 with microseconds
+    - "%Y-%m-%dT%H:%M:%SZ"         # ISO 8601
+    - "%Y-%m-%d %H:%M:%S"          # Common datetime
+    - "%d/%b/%Y:%H:%M:%S %z"       # Apache/Nginx
+    - "%d/%b/%Y:%H:%M:%S"          # Apache/Nginx without timezone
+    - "%b %d %H:%M:%S"             # Syslog format
+    - "%Y/%m/%d %H:%M:%S"          # Alternative datetime
+
+  # Custom parsers (define regex patterns)
+  custom: []
+
+# Export settings
+export:
+  # Default format
+  default_format: text
+
+  # HTML export settings
+  html:
+    theme: default  # default, dark, minimal
+    include_charts: true
+
+  # JSON export settings
+  json:
+    pretty: true
+    include_raw: false  # Include original log lines
+
+  # Text export settings
+  text:
+    width: 100
+    color: true
+
+# Performance settings
+performance:
+  # Chunk size for streaming large files
+  chunk_size: 10000
+
+  # Maximum memory usage (MB)
+  max_memory_mb: 1000
+
+  # Parallel processing
+  parallel: false
+  workers: 4  # Number of worker processes if parallel enabled
+
+# Logging
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  file: null   # Log to file if specified

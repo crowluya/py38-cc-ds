@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pk"
+version = "0.1.0"
+description = "A Markdown-based personal knowledge management system"
+authors = [{name = "Your Name", email = "you@example.com"}]
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.1.0",
+    "python-frontmatter>=1.0.0",
+    "pyyaml>=6.0",
+    "rich>=13.0.0",
+    "toml>=0.10.2",
+]
+
+[project.scripts]
+pk = "pk.cli:main"
+
+[tool.setuptools]
+packages = ["pk"]

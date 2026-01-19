@@ -1,0 +1,43 @@
+{
+  "thresholds": {
+    "complexity": {
+      "warning": 10,
+      "critical": 20
+    },
+    "duplication": {
+      "warning": 5,
+      "critical": 10
+    },
+    "maintainability": {
+      "warning": 50,
+      "critical": 30
+    },
+    "functionLength": {
+      "warning": 50,
+      "critical": 100
+    },
+    "parameterCount": {
+      "warning": 5,
+      "critical": 8
+    }
+  },
+  "ignore": [
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    "**/*.min.js",
+    "**/*.bundle.js"
+  ],
+  "extensions": [
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".mjs"
+  ],
+  "output": {
+    "format": "console",
+    "colors": true
+  }
+}

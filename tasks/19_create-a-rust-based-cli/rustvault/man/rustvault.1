@@ -1,0 +1,384 @@
+.\" Man page for rustvault
+.TH RUSTVAULT 1 "January 2024" "RustVault 0.1.0" "User Commands"
+
+.SH NAME
+rustvault \- secure CLI password manager with encryption and TOTP support
+
+.SH SYNOPSIS
+.B rustvault
+[\fIGLOBAL OPTIONS\fR]
+\fICOMMAND\fR
+[\fIOPTIONS\fR]
+[\fIARGS\fR]
+
+.SH DESCRIPTION
+RustVault is a secure, feature-rich command-line password manager written in Rust. It provides AES-256-GCM encryption with Argon2id key derivation, hierarchical vault organization, password generation, and TOTP support.
+
+.SH GLOBAL OPTIONS
+.TP
+\fB\-\-vault\-path\fR <\fIPATH\fR>
+Custom path to vault file (default: ~/.config/rustvault/vault.rustvault)
+
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Enable verbose output
+
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help information
+
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version information
+
+.SH COMMANDS
+
+.SS Vault Management
+.TP
+\fBinit\fR
+Initialize a new vault with a master password. The master password must be at least 8 characters.
+
+.TP
+\fBunlock\fR
+Unlock the vault for a session. The vault will auto-lock after 5 minutes of inactivity.
+
+.TP
+\fBstatus\fR
+Display vault information and statistics.
+
+.SS Entry Management
+.TP
+\fBentry add\fR [\fIOPTIONS\fR]
+Add a new password entry. Can be used interactively or with flags.
+
+.RS
+.PP
+\fB\-\-title\fR <\fITITLE\fR>
+Entry title
+
+.PP
+\fB\-\-username\fR <\fIUSERNAME\fR>
+Username or email
+
+.PP
+\fB\-\-password\fR <\fIPASSWORD\fR>
+Password (will prompt if not provided)
+
+.PP
+\fB\-\-url\fR <\fIURL\fR>
+Website URL
+
+.PP
+\fB\-\-notes\fR <\fINOTES\fR>
+Additional notes
+
+.PP
+\fB\-\-tags\fR <\fITAGS\fR>
+Comma-separated tags
+
+.PP
+\fB\-\-folder\fR <\fIFOLDER\fR>
+Target folder (default: root)
+
+.PP
+\fB\-\-generate\-password\fR
+Generate a secure password instead of prompting
+
+.PP
+\fB\-\-password\-length\fR <\fILEN\fR>
+Length for generated password (default: 16)
+
+.RE
+
+.TP
+\fBentry list\fR [\fIOPTIONS\fR]
+List entries in a folder.
+
+.RS
+.PP
+\fB\-\-folder\fR <\fIFOLDER\fR>
+Folder to list (default: root)
+
+.PP
+\fB\-\-show\-passwords\fR
+Display passwords in list
+
+.RE
+
+.TP
+\fBentry show\fR <\fIENTRY\fR> [\fIOPTIONS\fR]
+Display entry details.
+
+.RS
+.PP
+\fB\-\-folder\fR <\fIFOLDER\fR>
+Folder containing entry (default: root)
+
+.PP
+\fB\-\-show\-password\fR
+Display password
+
+.PP
+\fB\-\-copy\-password\fR
+Copy password to clipboard (auto-clears after 30s)
+
+.PP
+\fB\-\-copy\-totp\fR
+Copy TOTP code to clipboard
+
+.RE
+
+.TP
+\fBentry delete\fR <\fIENTRY\fR> [\fIOPTIONS\fR]
+Delete an entry.
+
+.RS
+.PP
+\fB\-\-folder\fR <\fIFOLDER\fR>
+Folder containing entry (default: root)
+
+.PP
+\fB\-\-force\fR
+Skip confirmation prompt
+
+.RE
+
+.SS Folder Management
+.TP
+\fBfolder add\fR <\fINAME\fR> [\fIOPTIONS\fR]
+Create a new folder.
+
+.RS
+.PP
+\fB\-\-parent\fR <\fIFOLDER\fR>
+Parent folder path (default: root)
+
+.RE
+
+.TP
+\fBfolder list\fR
+List all folders.
+
+.TP
+\fBfolder delete\fR <\fIPATH\fR> [\fIOPTIONS\fR]
+Delete a folder.
+
+.RS
+.PP
+\fB\-\-force\fR
+Skip confirmation prompt
+
+.PP
+\fB\-\-recursive\fR
+Delete folder and all contents
+
+.RE
+
+.SS Password Generation
+.TP
+\fBgenerate password\fR [\fIOPTIONS\fR]
+Generate a random password.
+
+.RS
+.PP
+\fB\-\-length\fR <\fILEN\fR>
+Password length (default: 16)
+
+.PP
+\fB\-\-uppercase\fR, \fB\-\-lowercase\fR, \fB\-\-digits\fR, \fB\-\-symbols\fR
+Include/exclude character types
+
+.PP
+\fB\-\-exclude\-ambiguous\fR
+Exclude ambiguous characters (0/O, 1/l/I)
+
+.PP
+\fB\-\-exclude\-similar\fR
+Exclude similar characters (i, l, 1, L, o, 0, O)
+
+.PP
+\fB\-\-copy\fR
+Copy to clipboard
+
+.PP
+\fB\-\-show\-strength\fR
+Display password strength estimate
+
+.RE
+
+.TP
+\fBgenerate passphrase\fR [\fIOPTIONS\fR]
+Generate a word-based passphrase.
+
+.RS
+.PP
+\fB\-\-words\fR <\fIN\fR>
+Number of words (default: 5)
+
+.PP
+\fB\-\-separator\fR <\fISEP\fR>
+Word separator (default: "-")
+
+.PP
+\fB\-\-capitalize\fR
+Capitalize each word
+
+.PP
+\fB\-\-include\-number\fR
+Append a random number
+
+.PP
+\fB\-\-copy\fR
+Copy to clipboard
+
+.PP
+\fB\-\-show\-strength\fR
+Display passphrase strength estimate
+
+.RE
+
+.SS TOTP (Two-Factor Authentication)
+.TP
+\fBtotp\fR <\fIENTRY\fR> [\fIOPTIONS\fR]
+Display TOTP code for an entry.
+
+.RS
+.PP
+\fB\-\-folder\fR <\fIFOLDER\fR>
+Folder containing entry (default: root)
+
+.RE
+
+.SS Search
+.TP
+\fBsearch\fR <\fIQUERY\fR> [\fIOPTIONS\fR]
+Search for entries matching query.
+
+.RS
+.PP
+\fB\-\-full\fR
+Show full entry details
+
+.RE
+
+.SS Import/Export
+.TP
+\fBexport\fR <\fIPATH\fR> [\fIOPTIONS\fR]
+Export vault data.
+
+.RS
+.PP
+\fB\-\-plaintext\fR
+Export as unencrypted JSON (use with caution!)
+
+.RE
+
+.TP
+\fBimport\fR <\fIPATH\fR>
+Import vault data from JSON file.
+
+.SH EXAMPLES
+
+Initialize a new vault:
+.PP
+.RS
+.EX
+$ rustvault init
+.EE
+.RE
+
+Add a password entry:
+.PP
+.RS
+.EX
+$ rustvault entry add --title "GitHub" --username "me@example.com"
+.EE
+.RE
+
+Add entry with generated password:
+.PP
+.RS
+.EX
+$ rustvault entry add --title "AWS" --generate-password --password-length 24
+.EE
+.RE
+
+Retrieve a password:
+.PP
+.RS
+.EX
+$ rustvault entry show "GitHub" --copy-password
+.EE
+.RE
+
+Generate a secure password:
+.PP
+.RS
+.EX
+$ rustvault generate password --length 32 --exclude-ambiguous
+.EE
+.RE
+
+Generate a passphrase:
+.PP
+.RS
+.EX
+$ rustvault generate passphrase --words 6 --capitalize
+.EE
+.RE
+
+Search for entries:
+.PP
+.RS
+.EX
+$ rustvault search "github"
+.EE
+.RE
+
+Display TOTP code:
+.PP
+.RS
+.EX
+$ rustvault totp "Google"
+.EE
+.RE
+
+.SH FILES
+.TP
+.I ~/.config/rustvault/vault.rustvault
+Default encrypted vault file
+
+.TP
+.I ~/.config/rustvault/backups/
+Automatic vault backups (keeps last 10)
+
+.SH SECURITY
+
+\fBEncryption:\fR AES-256-GCM (authenticated encryption)
+
+\fBKey Derivation:\fR Argon2id (memory-hard, GPU-resistant)
+
+\fBParameters:\fR 64 MiB memory, 3 iterations, 4 lanes
+
+\fBFile Security:\fR Secure permissions, file locking, atomic writes
+
+\fBMemory Security:\fR Sensitive data zeroed with zeroize crate
+
+.SH CAVEATS
+
+* Master password cannot be recovered (by design for security)
+* File locking prevents concurrent vault access
+* Clipboard support requires platform-specific dependencies
+* TOTP secrets must be manually entered (no QR code scanning)
+
+.SH BUGS
+
+Report bugs at: https://github.com/example/rustvault/issues
+
+.SH LICENSE
+
+MIT License
+
+.SH SEE ALSO
+
+\fBpass\fR(1), \fBkeepassxc-cli\fR(1), \fBbitwarden-cli\fR(1)

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="posts">
+    {% for post in posts %}
+    <article class="post">
+        <h2 class="post-title">
+            <a href="{{ site.base_url }}{{ post.url }}">{{ post.metadata.title }}</a>
+        </h2>
+        <div class="post-meta">
+            {{ post.metadata.date|date }}{% if post.metadata.author %} · {{ post.metadata.author }}{% endif %}
+            {% if post.reading_time %} · {{ post.reading_time }} min read{% endif %}
+        </div>
+        {% if post.excerpt %}
+        <div class="post-excerpt">
+            {{ post.excerpt }}
+        </div>
+        {% endif %}
+        {% if post.metadata.tags %}
+        <div class="tags">
+            {% for tag in post.metadata.tags %}
+            <a href="{{ site.base_url }}/tag/{{ tag|slug }}/" class="tag">{{ tag }}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+
+{% if pagination.total_pages > 1 %}
+<div class="pagination">
+    {% if pagination.has_prev %}
+    <a href="{{ site.base_url }}/{% if pagination.prev_page > 1 %}page/{{ pagination.prev_page }}/{% endif %}">← Previous</a>
+    {% endif %}
+
+    <span>Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+
+    {% if pagination.has_next %}
+    <a href="{{ site.base_url }}/page/{{ pagination.next_page }}/">Next →</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

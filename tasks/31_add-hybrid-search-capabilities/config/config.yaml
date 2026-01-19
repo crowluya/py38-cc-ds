@@ -1,0 +1,72 @@
+# Hybrid Search Configuration
+
+# BM25 Configuration
+bm25:
+  k1: 1.5  # Term saturation parameter (1.2-2.0)
+  b: 0.75  # Length normalization parameter (0.0-1.0)
+  epsilon: 0.25  # Floor for IDF values
+
+# Semantic Search Configuration
+semantic:
+  model_name: "all-MiniLM-L6-v2"  # Fast, good quality
+  embedding_dim: 384
+  batch_size: 32
+  max_length: 512
+  index_type: "IndexFlatL2"  # or "IndexIVFFlat" for large datasets
+  nlist: 100  # For IVFFlat: number of clusters
+
+# Hybrid Search Configuration
+hybrid:
+  bm25_weight: 0.4  # Weight for BM25 scores
+  semantic_weight: 0.6  # Weight for semantic scores
+  expansion_weight: 0.2  # Weight for expanded query terms
+  fusion_strategy: "weighted"  # "weighted" or "rrf" (reciprocal rank fusion)
+  k: 10  # For RRF: constant
+  normalize_scores: true
+
+# Query Expansion Configuration
+expansion:
+  enabled: true
+  max_synonyms: 3  # Maximum synonyms per term
+  max_related: 2  # Maximum related terms per term
+  similarity_threshold: 0.7  # Minimum similarity for related terms
+  expansion_sources:
+    - "wordnet"
+    - "embedding"
+  use_pos_filtering: true  # Filter synonyms by part of speech
+  pos_tags:
+    - "NN"  # Noun
+    - "NNS"
+    - "JJ"  # Adjective
+    - "RB"  # Adverb
+
+# Text Preprocessing Configuration
+preprocessing:
+  lowercase: true
+  remove_stopwords: true
+  remove_punctuation: true
+  lemmatize: true
+  min_word_length: 2
+  max_word_length: 50
+
+# Search Configuration
+search:
+  default_k: 10  # Default number of results
+  max_k: 100  # Maximum number of results
+  min_score: 0.0  # Minimum score threshold
+  enable_highlighting: true
+  highlight_fragment_size: 150
+
+# Performance Configuration
+performance:
+  cache_embeddings: true
+  cache_size_mb: 500
+  parallel_workers: 4
+  batch_indexing: true
+  index_batch_size: 1000
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "logs/search.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

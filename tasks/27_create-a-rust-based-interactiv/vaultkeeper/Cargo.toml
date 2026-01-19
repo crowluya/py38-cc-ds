@@ -1,0 +1,56 @@
+[package]
+name = "vaultkeeper"
+version = "0.1.0"
+edition = "2021"
+description = "A secure, interactive CLI password manager with AES-256 encryption"
+authors = ["VaultKeeper Team"]
+license = "MIT"
+
+[dependencies]
+# Encryption and cryptography
+aes-gcm = "0.10"
+argon2 = "0.5"
+zeroize = { version = "1.7", features = ["zeroize_derive"] }
+rand = "0.8"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# CLI and TUI
+ratatui = "0.26"
+crossterm = "0.27"
+
+# Password input
+rpassword = "7.3"
+
+# Clipboard
+clipboard = "0.5"
+
+# Password strength validation
+zxcvbn = "2.2"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Configuration
+toml = "0.8"
+dirs = "5.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tempfile = "3.8"
+
+[[bin]]
+name = "vaultkeeper"
+path = "src/main.rs"
