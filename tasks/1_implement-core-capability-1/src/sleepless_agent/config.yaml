@@ -1,0 +1,151 @@
+slack:
+  bot_token: ""
+  app_token: ""
+
+claude_code:
+  binary_path: claude
+  model: claude-sonnet-4-5-20250929
+  night_start_hour: 1
+  night_end_hour: 9
+  threshold_day: 100.0
+  threshold_night: 100.0
+  usage_command: python3 glm_usage.py
+
+git:
+  enabled: true  # Set to true to enable git commits and branching
+  use_remote_repo: true
+  remote_repo_url: git@github.com:crowluya/py38-cc-ds.git
+  auto_create_repo: true
+
+agent:
+  workspace_root: ./workspace
+  task_timeout_seconds: 1800
+
+multi_agent_workflow:
+  planner:
+    enabled: true
+    max_turns: 10
+  worker:
+    enabled: true
+    max_turns: 30
+  evaluator:
+    enabled: true
+    max_turns: 10
+
+auto_generation:
+  enabled: true
+  prompts:
+    - name: refine_focused
+      prompt: |-
+        Generate a task to improve the py38-cc-ds project in workspace/projects/py38-cc-ds/.
+
+        ## Current State
+        - Active tasks: {task_count} ({pending_count} pending, {in_progress_count} in progress)
+
+        ## Available Tasks to Refine
+        {available_tasks}
+
+        ## Recent Work & Context
+        {recent_work}
+
+        ## Primary Project: py38-cc-ds
+        The main project is located at workspace/projects/py38-cc-ds/. This is a Python code generation project that needs:
+        - Implementation of Plan 018 (PyCode quality improvement with 7 core capabilities)
+        - Testing and validation of existing code
+        - Documentation improvements
+        - Bug fixes and enhancements
+
+        ## Workspace Constraints
+        - Tasks execute in isolated directories: workspace/tasks/<task_id>/
+        - REFINE tasks for py38-cc-ds should use -p py38-cc-ds flag
+        - Do NOT reference workspace/data/ or other system directories
+
+        ## Task Generation
+        Generate ONE REFINE task for the py38-cc-ds project:
+        - Implement features from Plan 018
+        - Add tests or improve existing tests
+        - Fix bugs or improve code quality
+        - Add documentation
+        - Refactor or optimize code
+
+        IMPORTANT Format Requirements:
+        - Your response MUST be 1-2 sentences max
+        - Start with [REFINE] tag
+        - Be specific about what to implement/improve
+
+        Examples:
+        - [REFINE] Implement the EasyOCR integration capability from Plan 018
+        - [REFINE] Add unit tests for the code generation module
+        - [REFINE] Improve error handling in the API endpoints
+      weight: 0.9  # 90% refine - focus on existing project
+    - name: balanced
+      prompt: |-
+        Generate a task for the py38-cc-ds project (workspace/projects/py38-cc-ds/).
+
+        ## Current State
+        - Active tasks: {task_count} ({pending_count} pending, {in_progress_count} in progress)
+
+        ## Available Tasks to Refine
+        {available_tasks}
+
+        ## Recent Work & Context
+        {recent_work}
+
+        ## Primary Project: py38-cc-ds
+        Python code generation project at workspace/projects/py38-cc-ds/.
+        Refer to plan_018_pycode_quality_improvement.md for implementation roadmap.
+
+        ## Workspace Constraints
+        - REFINE tasks for py38-cc-ds should use -p py38-cc-ds flag
+        - Do NOT reference workspace/data/ or other system directories
+
+        ## Task Generation
+        Generate ONE task (NEW or REFINE) for py38-cc-ds:
+        - Implement features from Plan 018 (7 core capabilities)
+        - Add tests, fix bugs, improve code quality
+        - Add documentation or examples
+        - Optimize or refactor existing code
+
+        Format: [REFINE] or [NEW] followed by 1-2 sentence description.
+      weight: 0.1  # 10% balance
+    - name: new_friendly
+      prompt: |-
+        Generate an interesting and valuable task for the workspace.
+
+        ## Current State
+        - Active tasks: {task_count} ({pending_count} pending, {in_progress_count} in progress)
+        - Few tasks in queue - good time for new projects!
+
+        ## Available Tasks to Refine
+        {available_tasks}
+
+        ## Workspace Constraints
+        - Tasks execute in isolated directories: workspace/tasks/<task_id>/
+        - Each task only has access to its own workspace folder and workspace/shared/
+        - Do NOT reference workspace/data/ or other system directories in task descriptions
+        - REFINE tasks reuse existing task workspaces (no new folder created)
+
+        ## Task Generation
+        Generate ONE innovative task that creates value.
+
+        Areas to explore:
+        - Build practical tools and utilities
+        - Create educational content and tutorials
+        - Develop software applications or scripts
+        - Write comprehensive documentation or guides
+        - Design systems and architectures
+        - Analyze and compare technologies or approaches
+        - Generate creative content (technical writing, examples)
+        - Research and summarize complex topics
+        - Create data visualizations or analysis
+        - Develop proof-of-concepts or experiments
+
+        Can be NEW (fresh project) or REFINE (improve existing work) - choose what would be most valuable.
+
+        IMPORTANT Format Requirements:
+        - To refine a specific task: Use [REFINE:#<task_id>] followed by description
+          Example: [REFINE:#3] Expand analysis with performance benchmarks
+        - For general refinements: Use [REFINE] followed by description
+        - For new tasks: Use [NEW] followed by description
+        - Your response MUST be 1-2 sentences max
+      weight: 0.0  # Disabled
