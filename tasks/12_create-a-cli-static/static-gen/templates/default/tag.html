@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Tag: {{ tag }}</h1>
+
+<div class="posts">
+    {% for post in posts %}
+    <article class="post">
+        <h2 class="post-title">
+            <a href="{{ site.base_url }}{{ post.url }}">{{ post.metadata.title }}</a>
+        </h2>
+        <div class="post-meta">
+            {{ post.metadata.date|date }}{% if post.metadata.author %} · {{ post.metadata.author }}{% endif %}
+            {% if post.reading_time %} · {{ post.reading_time }} min read{% endif %}
+        </div>
+        {% if post.excerpt %}
+        <div class="post-excerpt">
+            {{ post.excerpt }}
+        </div>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+
+<p><a href="{{ site.base_url }}/">← Back to home</a></p>
+{% endblock %}

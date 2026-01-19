@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "data_directory": "~/.timetracker",
+  "database_path": "~/.timetracker/timetracker.db",
+  "watch_directories": [
+    "~/projects",
+    "~/work",
+    "~/code"
+  ],
+  "ignore_patterns": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.next/**",
+    "**/coverage/**",
+    "**/*.tmp",
+    "**/*.log",
+    "**/.DS_Store"
+  ],
+  "auto_suggest_enabled": true,
+  "file_watcher_enabled": true,
+  "git_integration_enabled": true,
+  "debounce_interval": 1000,
+  "suggestions_confidence_threshold": 0.5
+}

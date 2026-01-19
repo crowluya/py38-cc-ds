@@ -1,0 +1,15 @@
+[package]
+name = "productivity-dashboard"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A CLI productivity dashboard for real-time system monitoring"
+
+[dependencies]
+sysinfo = "0.32"
+ratatui = "0.28"
+crossterm = "0.28"
+tokio = { version = "1.40", features = ["full"] }
+clap = { version = "4.5", features = ["derive"] }
+chrono = "0.4"
+gethostname = "0.5"

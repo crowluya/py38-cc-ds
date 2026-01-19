@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article class="post-full">
+    <header>
+        <h1>{{ page.title }}</h1>
+        <div class="post-meta">
+            {{ page.date|date }}{% if page.author %} · {{ page.author }}{% endif %}
+            {% if page.reading_time %} · {{ page.reading_time }} min read{% endif %}
+            {% if page.word_count %} · {{ page.word_count }} words{% endif %}
+        </div>
+        {% if page.tags %}
+        <div class="tags">
+            {% for tag in page.tags %}
+            <a href="{{ site.base_url }}/tag/{{ tag|slug }}/" class="tag">{{ tag }}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </header>
+
+    <div class="post-content">
+        {{ content }}
+    </div>
+
+    {% if page.categories %}
+    <div class="categories" style="margin-top: 30px;">
+        <strong>Categories:</strong>
+        {% for category in page.categories %}
+        <a href="{{ site.base_url }}/category/{{ category|slug }}/" style="color: #0066cc;">{{ category }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+</article>
+
+<nav class="post-nav" style="margin-top: 60px; padding-top: 30px; border-top: 1px solid #eee;">
+    {# Post navigation could be added here #}
+</nav>
+{% endblock %}

@@ -1,0 +1,13 @@
+{
+    "name": "Height vs Weight",
+    "data": [
+        {"x": 150, "y": 50, "label": "Person 1"},
+        {"x": 160, "y": 55, "label": "Person 2"},
+        {"x": 165, "y": 58, "label": "Person 3"},
+        {"x": 170, "y": 62, "label": "Person 4"},
+        {"x": 175, "y": 65, "label": "Person 5"},
+        {"x": 180, "y": 70, "label": "Person 6"},
+        {"x": 185, "y": 75, "label": "Person 7"},
+        {"x": 190, "y": 80, "label": "Person 8"}
+    ]
+}

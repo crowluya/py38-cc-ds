@@ -1,0 +1,86 @@
+name: rust
+description: A minimal Rust project with Cargo setup
+language: Rust
+version: 1.0.0
+variables:
+  - name: use_git
+    description: Initialize Git repository
+    default: "true"
+    required: false
+
+  - name: author_name
+    description: Author name
+    default: "Your Name"
+    required: false
+
+  - name: license
+    description: License type
+    default: "MIT"
+    required: false
+
+files:
+  - path: Cargo.toml
+    content: |
+      [package]
+      name = "{{project_name_snake}}"
+      version = "0.1.0"
+      edition = "2021"
+      authors = ["{{author_name}}"]
+      license = "{{license}}"
+      description = "A new Rust project"
+
+      [dependencies]
+    template: true
+
+  - path: README.md
+    content: |
+      # {{project_name}}
+
+      A new Rust project created with project-init.
+
+      ## Getting Started
+
+      ```bash
+      cargo build
+      cargo run
+      ```
+
+      ## Running Tests
+
+      ```bash
+      cargo test
+      ```
+
+      ## License
+
+      This project is licensed under the {{license}} license.
+    template: true
+
+  - path: src/main.rs
+    content: |
+      fn main() {
+          println!("Hello, {{project_name}}!");
+      }
+    template: true
+
+  - path: .gitignore
+    content: |
+      # Rust
+      /target
+      **/*.rs.bk
+      .cargo.toml
+
+      # IDE
+      .idea/
+      .vscode/
+      *.swp
+      *.swo
+      *~
+
+      # OS
+      .DS_Store
+      Thumbs.db
+    template: false
+
+directories:
+  - src

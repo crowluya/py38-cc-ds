@@ -1,0 +1,72 @@
+[package]
+name = "log-analyzer"
+version = "0.1.0"
+edition = "2021"
+description = "Real-time log analysis CLI tool with anomaly detection"
+authors = ["Log Analyzer Team"]
+license = "MIT"
+repository = "https://github.com/example/log-analyzer"
+readme = "README.md"
+keywords = ["logging", "monitoring", "analytics", "cli"]
+categories = ["command-line-utilities", "parser-implementations"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io"] }
+async-trait = "0.1"
+
+# UUID generation
+uuid = { version = "1.11", features = ["v4", "serde"] }
+
+# CLI argument parsing
+clap = { version = "4.5", features = ["derive"] }
+
+# Serialization and configuration
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Regular expressions
+regex = "1.11"
+regex-syntax = "0.8"
+
+# File system monitoring
+notify = { version = "7.0", features = ["serde"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Date/time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# HTTP client for webhooks
+reqwest = { version = "0.12", features = ["json"], optional = true }
+
+# Statistics
+statrs = "0.17"
+
+# Terminal colors
+colored = "2.1"
+termcolor = "1.4"
+
+[dev-dependencies]
+tempfile = "3.13"
+criterion = "0.5"
+
+[features]
+default = ["webhooks"]
+webhooks = ["reqwest"]
+
+[[bin]]
+name = "log-analyzer"
+path = "src/main.rs"
+
+[lib]
+name = "log_analyzer"
+path = "src/lib.rs"

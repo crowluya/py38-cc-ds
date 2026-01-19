@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=sqlite:/data/code_execution.db
+      - RUST_LOG=info
+    depends_on:
+      - db
+    networks:
+      - code-exec-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_WS_URL=ws://localhost:8080
+      - VITE_API_URL=http://localhost:8080/api
+    networks:
+      - code-exec-network
+
+  db:
+    image: sqlite:latest
+    volumes:
+      - sqlite-data:/data
+    networks:
+      - code-exec-network
+
+networks:
+  code-exec-network:
+    driver: bridge
+
+volumes:
+  sqlite-data:

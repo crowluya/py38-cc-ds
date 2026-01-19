@@ -1,0 +1,260 @@
+name: python
+description: A modern Python FastAPI application
+language: Python
+version: 1.0.0
+variables:
+  - name: author_name
+    description: Author name
+    default: "Your Name"
+    required: false
+
+  - name: python_version
+    description: Python version
+    default: "3.11"
+    required: false
+
+files:
+  - path: requirements.txt
+    content: |
+      fastapi==0.109.0
+      uvicorn[standard]==0.27.0
+      pydantic==2.5.3
+      python-dotenv==1.0.0
+      pytest==7.4.4
+      httpx==0.26.0
+    template: false
+
+  - path: README.md
+    content: |
+      # {{project_name}}
+
+      A modern Python FastAPI application created with project-init.
+
+      ## Getting Started
+
+      ```bash
+      # Create virtual environment
+      python -m venv venv
+      source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+      # Install dependencies
+      pip install -r requirements.txt
+
+      # Run the application
+      uvicorn main:app --reload
+      ```
+
+      ## API Documentation
+
+      Once running, visit:
+      - Swagger UI: http://localhost:8000/docs
+      - ReDoc: http://localhost:8000/redoc
+
+      ## Running Tests
+
+      ```bash
+      pytest
+      ```
+
+      ## License
+
+      MIT
+    template: true
+
+  - path: main.py
+    content: |
+      from fastapi import FastAPI
+      from fastapi.middleware.cors import CORSMiddleware
+
+      app = FastAPI(
+          title="{{project_name}}",
+          description="A modern Python FastAPI application",
+          version="0.1.0"
+      )
+
+      # Configure CORS
+      app.add_middleware(
+          CORSMiddleware,
+          allow_origins=["*"],
+          allow_credentials=True,
+          allow_methods=["*"],
+          allow_headers=["*"],
+      )
+
+      @app.get("/")
+      async def root():
+          return {
+              "message": "Welcome to {{project_name}}",
+              "status": "running"
+          }
+
+      @app.get("/health")
+      async def health_check():
+          return {"status": "healthy"}
+
+      if __name__ == "__main__":
+          import uvicorn
+          uvicorn.run(app, host="0.0.0.0", port=8000)
+    template: true
+
+  - path: .gitignore
+    content: |
+      # Byte-compiled / optimized / DLL files
+      __pycache__/
+      *.py[cod]
+      *$py.class
+
+      # C extensions
+      *.so
+
+      # Distribution / packaging
+      .Python
+      build/
+      develop-eggs/
+      dist/
+      downloads/
+      eggs/
+      .eggs/
+      lib/
+      lib64/
+      parts/
+      sdist/
+      var/
+      wheels/
+      pip-wheel-metadata/
+      share/python-wheels/
+      *.egg-info/
+      .installed.cfg
+      *.egg
+      MANIFEST
+
+      # PyInstaller
+      *.manifest
+      *.spec
+
+      # Installer logs
+      pip-log.txt
+      pip-delete-this-directory.txt
+
+      # Unit test / coverage reports
+      htmlcov/
+      .tox/
+      .nox/
+      .coverage
+      .coverage.*
+      .cache
+      nosetests.xml
+      coverage.xml
+      *.cover
+      *.py,cover
+      .hypothesis/
+      .pytest_cache/
+
+      # Translations
+      *.mo
+      *.pot
+
+      # Django stuff:
+      *.log
+      local_settings.py
+      db.sqlite3
+      db.sqlite3-journal
+
+      # Flask stuff:
+      instance/
+      .webassets-cache
+
+      # Scrapy stuff:
+      .scrapy
+
+      # Sphinx documentation
+      docs/_build/
+
+      # PyBuilder
+      target/
+
+      # Jupyter Notebook
+      .ipynb_checkpoints
+
+      # IPython
+      profile_default/
+      ipython_config.py
+
+      # pyenv
+      .python-version
+
+      # pipenv
+      Pipfile.lock
+
+      # PEP 582
+      __pypackages__/
+
+      # Celery stuff
+      celerybeat-schedule
+      celerybeat.pid
+
+      # SageMath parsed files
+      *.sage.py
+
+      # Environments
+      .env
+      .venv
+      env/
+      venv/
+      ENV/
+      env.bak/
+      venv.bak/
+
+      # Spyder project settings
+      .spyderproject
+      .spyproject
+
+      # Rope project settings
+      .ropeproject
+
+      # mkdocs documentation
+      /site
+
+      # mypy
+      .mypy_cache/
+      .dmypy.json
+      dmypy.json
+
+      # Pyre type checker
+      .pyre/
+
+      # IDE
+      .idea/
+      .vscode/
+      *.swp
+      *.swo
+      *~
+    template: false
+
+  - path: tests/__init__.py
+    content: |
+      # Test package
+    template: false
+
+  - path: tests/test_main.py
+    content: |
+      from fastapi.testclient import TestClient
+      from main import app
+
+      client = TestClient(app)
+
+      def test_root():
+          response = client.get("/")
+          assert response.status_code == 200
+          data = response.json()
+          assert "message" in data
+          assert "status" in data
+
+      def test_health_check():
+          response = client.get("/health")
+          assert response.status_code == 200
+          assert response.json() == {"status": "healthy"}
+    template: false
+
+directories:
+  - tests
